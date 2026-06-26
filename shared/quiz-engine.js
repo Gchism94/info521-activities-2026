@@ -8,7 +8,8 @@
 
    Usage:  PL.mountQuiz(document.getElementById('quiz'), CONFIG);
    CONFIG: { unitId, unitNumber, token, masteryThreshold, quizPerAttempt,
-             items: [{ stem, options: [{ text, correct, feedback }] }] }
+             quiz: [{ stem, options: [{ text, correct, feedback }] }] }
+   (legacy `items` is still accepted as an alias for `quiz`.)
    ========================================================================== */
 (function (global) {
   'use strict';
@@ -51,7 +52,7 @@
   }
 
   PL.mountQuiz = function (mount, cfg) {
-    var items = cfg.items || [];
+    var items = cfg.quiz || cfg.items || [];
     var perAttempt = (cfg.quizPerAttempt && cfg.quizPerAttempt < items.length)
       ? cfg.quizPerAttempt : items.length;
     var threshold = cfg.masteryThreshold || 0.8;

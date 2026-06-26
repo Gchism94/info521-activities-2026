@@ -1,0 +1,183 @@
+/* ============================================================================
+   Peer-Loops shared shell — design system for all six weekly tools.
+   Built once; every week's index.html links this. Neutral UI chrome themes
+   light/dark via CSS variables; data colors are Okabe-Ito (colorblind-safe)
+   and constant across themes, always paired with a redundant cue in the SVG.
+   ========================================================================== */
+
+:root {
+  --pl-bg: #f5f5f5;
+  --pl-card: #ffffff;
+  --pl-panel: #f8f7f4;
+  --pl-panel-2: #f1efe8;
+  --pl-text: #2c2c2a;
+  --pl-muted: #5f5e5a;
+  --pl-muted-2: #888780;
+  --pl-border: #d3d1c7;
+  --pl-accent: #534ab7;
+  --pl-accent-2: #4840a0;
+  --pl-grid: rgba(0, 0, 0, 0.10);
+  --pl-good-bg: #d6f0e0;
+  --pl-good-fg: #1a6b3a;
+  --pl-warn-bg: #fdecd0;
+  --pl-warn-fg: #7a4500;
+  --pl-bad-bg: #fbe3de;
+  --pl-bad-fg: #8a2b18;
+
+  /* Okabe-Ito data palette (do not theme-swap) */
+  --ok-blue: #0072B2;
+  --ok-vermillion: #D55E00;
+  --ok-green: #009E73;
+  --ok-orange: #E69F00;
+  --ok-sky: #56B4E9;
+  --ok-yellow: #F0E442;
+  --ok-purple: #CC79A7;
+  --ok-black: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pl-bg: #1a1a1a;
+    --pl-card: #2c2c2a;
+    --pl-panel: #333330;
+    --pl-panel-2: #3a3a38;
+    --pl-text: #e5e5e5;
+    --pl-muted: #b4b2a9;
+    --pl-muted-2: #888780;
+    --pl-border: #5f5e5a;
+    --pl-accent: #afa9ec;
+    --pl-accent-2: #c4bff5;
+    --pl-grid: rgba(255, 255, 255, 0.10);
+    --pl-good-bg: #1a3a28; --pl-good-fg: #7de0a8;
+    --pl-warn-bg: #3a2800; --pl-warn-fg: #f0b060;
+    --pl-bad-bg: #3a1f18;  --pl-bad-fg: #f0a48c;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--pl-bg);
+  color: var(--pl-text);
+  line-height: 1.6;
+  padding: 2rem;
+}
+
+.pl-container {
+  max-width: 920px;
+  margin: 0 auto;
+  background: var(--pl-card);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.pl-container h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.4rem; }
+.pl-subtitle { font-size: 0.95rem; color: var(--pl-muted); margin-bottom: 1.5rem; }
+
+.pl-eq {
+  background: var(--pl-panel);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  overflow-x: auto;
+}
+
+/* ---- chart ---------------------------------------------------------------- */
+.pl-panel { background: var(--pl-panel); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; }
+.pl-dot      { fill: var(--ok-blue); stroke: var(--pl-card); stroke-width: 1.5; }
+.pl-fit-line { stroke: var(--ok-purple); stroke-width: 2.5; }
+.pl-ls-line  { stroke: var(--ok-green); stroke-width: 2.5; stroke-dasharray: 7 4; }
+.pl-resid    { stroke: var(--ok-orange); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pl-outlier  { fill: var(--ok-vermillion); stroke: var(--pl-card); stroke-width: 1.5; }
+.pl-handle   { fill: var(--ok-purple); stroke: var(--pl-card); stroke-width: 2; cursor: grab; }
+.pl-handle:active { cursor: grabbing; }
+.pl-handle:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+.pl-axis-label { fill: var(--pl-muted); font-size: 12px; }
+
+.pl-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--pl-muted); margin-bottom: 1.25rem; padding: 0 0.25rem; }
+.pl-legend-item { display: flex; align-items: center; gap: 7px; }
+.pl-swatch { width: 18px; height: 0; border-top-width: 3px; border-top-style: solid; flex-shrink: 0; }
+.pl-swatch.dot { width: 12px; height: 12px; border: 0; border-radius: 50%; }
+.pl-swatch.diamond { width: 11px; height: 11px; border: 0; transform: rotate(45deg); }
+
+/* ---- controls ------------------------------------------------------------- */
+.pl-controls { background: var(--pl-panel-2); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+.pl-controls-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.pl-control { flex: 1; min-width: 200px; }
+.pl-control label { font-size: 13px; color: var(--pl-muted); display: block; margin-bottom: 5px; }
+.pl-control-inputs { display: flex; align-items: center; gap: 8px; }
+.pl-control-inputs input[type="range"] { flex: 1; accent-color: var(--pl-accent); height: 4px; cursor: pointer; }
+.pl-control-inputs input[type="number"] {
+  width: 80px; padding: 5px 8px; border: 1px solid var(--pl-border);
+  border-radius: 6px; font-size: 13px; background: var(--pl-card); color: var(--pl-text);
+  font-variant-numeric: tabular-nums;
+}
+.pl-control-inputs input[type="number"]:focus-visible { outline: none; border-color: var(--pl-accent); }
+
+.pl-btns { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 1rem; }
+.pl-btn {
+  padding: 9px 16px; font-size: 14px; border: 1px solid var(--pl-border);
+  border-radius: 8px; background: var(--pl-card); color: var(--pl-text);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.pl-btn:hover { background: var(--pl-panel); border-color: var(--pl-muted-2); }
+.pl-btn:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+.pl-btn[aria-pressed="true"] { border-color: var(--pl-accent); box-shadow: inset 0 0 0 1px var(--pl-accent); }
+.pl-btn-primary { background: var(--pl-accent); color: #fff; border-color: var(--pl-accent); font-weight: 500; }
+.pl-btn-primary:hover { background: var(--pl-accent-2); border-color: var(--pl-accent-2); }
+.pl-btn-small { padding: 5px 12px; font-size: 13px; }
+
+/* ---- readout card --------------------------------------------------------- */
+.pl-info { background: var(--pl-panel); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.75rem; }
+.pl-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.pl-cell { background: var(--pl-card); border-radius: 6px; padding: 8px 12px; }
+.pl-cell-label { font-size: 11px; color: var(--pl-muted-2); letter-spacing: 0.04em; margin-bottom: 2px; }
+.pl-cell-value { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ---- quiz ----------------------------------------------------------------- */
+.pl-quiz { border-top: 1px solid var(--pl-border); margin-top: 1.5rem; padding-top: 1.5rem; }
+.pl-quiz-header h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.3rem; }
+.pl-quiz-status { font-size: 0.85rem; color: var(--pl-muted); margin-bottom: 1.25rem; }
+.pl-q { border: 0; margin-bottom: 1.5rem; }
+.pl-q-stem { font-weight: 500; margin-bottom: 0.6rem; }
+.pl-opt {
+  display: block; position: relative; border: 1px solid var(--pl-border);
+  border-radius: 8px; padding: 10px 12px 10px 38px; margin-bottom: 8px; cursor: pointer;
+}
+.pl-opt:hover { background: var(--pl-panel); }
+.pl-opt input { position: absolute; left: 12px; top: 13px; accent-color: var(--pl-accent); }
+.pl-opt-text { display: block; }
+.pl-opt-feedback { display: none; font-size: 0.85rem; color: var(--pl-muted); margin-top: 6px; }
+.pl-opt.is-correct { border-color: var(--pl-good-fg); background: var(--pl-good-bg); }
+.pl-opt.is-wrong   { border-color: var(--pl-bad-fg);  background: var(--pl-bad-bg); }
+.pl-opt.is-correct::after { content: "✓ correct"; }
+.pl-opt.is-wrong.is-picked::after { content: "✗ your choice"; }
+.pl-opt.is-correct::after, .pl-opt.is-wrong.is-picked::after {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  display: inline-block; margin-top: 4px; color: var(--pl-muted);
+}
+.pl-quiz-actions { margin: 1rem 0; }
+.pl-score { font-weight: 600; margin-bottom: 0.5rem; }
+.pl-quiz-hint { font-size: 0.9rem; color: var(--pl-muted); }
+.pl-receipt { background: var(--pl-good-bg); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 0.5rem; }
+.pl-receipt-label { font-size: 0.85rem; color: var(--pl-good-fg); font-weight: 600; margin-bottom: 0.5rem; }
+.pl-receipt-code {
+  display: block; background: var(--pl-card); border-radius: 6px; padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem;
+  margin-bottom: 0.5rem; word-break: break-word;
+}
+
+.pl-attribution { margin-top: 1.75rem; font-size: 0.8rem; color: var(--pl-muted-2); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+@media (max-width: 700px) {
+  body { padding: 1rem; }
+  .pl-container { padding: 1.25rem; }
+  .pl-controls-row { flex-direction: column; }
+}

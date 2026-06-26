@@ -9,7 +9,6 @@
    Usage:  PL.mountQuiz(document.getElementById('quiz'), CONFIG);
    CONFIG: { unitId, unitNumber, token, masteryThreshold, quizPerAttempt,
              quiz: [{ stem, options: [{ text, correct, feedback }] }] }
-   (legacy `items` is still accepted as an alias for `quiz`.)
    ========================================================================== */
 (function (global) {
   'use strict';

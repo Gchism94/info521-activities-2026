@@ -1,5 +1,5 @@
 /* ============================================================================
-   Week 1 — The Linear Model (least-squares explorer + mastery quiz).
+   Week 6 — Principal Component Analysis (projection explorer + mastery quiz).
    A "thin" week module: dataset + drawViz + quiz bank. Everything reusable
    lives in ../shared/. Only CONFIG changes between weeks.
    ========================================================================== */
@@ -105,53 +105,63 @@
     ]
   };
 
-  // ---- math helpers -------------------------------------------------------
-  function lsq(pts) {
-    var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0, i, x, y;
-    for (i = 0; i < n; i++) { x = pts[i][0]; y = pts[i][1]; sx += x; sy += y; sxx += x * x; sxy += x * y; }
-    var xbar = sx / n, ybar = sy / n, denom = sxx - n * xbar * xbar;
-    var w1 = denom !== 0 ? (sxy - n * xbar * ybar) / denom : 0;
-    return { w0: ybar - w1 * xbar, w1: w1 };
-  }
-  function mse(pts, w0, w1) {
-    var s = 0, i, r;
-    for (i = 0; i < pts.length; i++) { r = pts[i][1] - (w0 + w1 * pts[i][0]); s += r * r; }
-    return s / pts.length;
-  }
+  // ---- numerics & PCA -----------------------------------------------------
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  var DATA = CONFIG.data, N = DATA.length, DEG = Math.PI / 180;
 
-  // ---- state --------------------------------------------------------------
-  var DEFAULTS = { w0: 95, w1: 0.4 };
-  var SLIDER = { w0: { min: 60, max: 140, step: 0.5 }, w1: { min: -0.5, max: 2.5, step: 0.01 } };
-  var state = { w0: DEFAULTS.w0, w1: DEFAULTS.w1, showLS: false, outlierOn: false };
-  function pts() { return state.outlierOn ? CONFIG.data.concat([CONFIG.outlier]) : CONFIG.data; }
+  // center the data; PCA operates on variance about the mean
+  var meanX = 0, meanY = 0;
+  DATA.forEach(function (p) { meanX += p[0]; meanY += p[1]; }); meanX /= N; meanY /= N;
+  var Sxx = 0, Syy = 0, Sxy = 0;
+  DATA.forEach(function (p) { var a = p[0] - meanX, b = p[1] - meanY; Sxx += a * a; Syy += b * b; Sxy += a * b; });
+  Sxx /= (N - 1); Syy /= (N - 1); Sxy /= (N - 1);                 // 2x2 covariance Sigma
 
-  // ---- chart scaffold -----------------------------------------------------
-  var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 54 };
+  // closed-form 2x2 symmetric eigen-decomposition
+  var TRACE = Sxx + Syy, DETV = Sxx * Syy - Sxy * Sxy;
+  var DISC = Math.sqrt(Math.max(0, (TRACE / 2) * (TRACE / 2) - DETV));
+  var L1 = TRACE / 2 + DISC, L2 = TRACE / 2 - DISC;              // eigenvalues (variances)
+  var V1 = (Math.abs(Sxy) > 1e-9) ? [Sxy, L1 - Sxx] : (Sxx >= Syy ? [1, 0] : [0, 1]);
+  var vn = Math.hypot(V1[0], V1[1]) || 1; V1 = [V1[0] / vn, V1[1] / vn];   // PC1 (top eigenvector)
+  var V2 = [-V1[1], V1[0]];                                      // PC2, orthogonal
+  var PC1_DEG = (function () { var a = Math.atan2(V1[1], V1[0]) / DEG; return a < 0 ? a + 180 : a; })();
+  // variance of the projection onto u = (cos t, sin t): u' Sigma u
+  function projVar(deg) { var t = deg * DEG, c = Math.cos(t), s = Math.sin(t); return Sxx * c * c + 2 * Sxy * c * s + Syy * s * s; }
+
+  var state = { theta: CONFIG.theta.default, showComponents: false };
+
+  // ---- chart scaffold (equal aspect so projections look perpendicular) -----
+  var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 56 };
   var iw = W - margin.left - margin.right, ih = H - margin.top - margin.bottom;
   var svg = d3.select('#chart').append('svg')
-    .attr('viewBox', '0 0 ' + W + ' ' + H)
-    .attr('width', '100%')
+    .attr('viewBox', '0 0 ' + W + ' ' + H).attr('width', '100%')
     .attr('role', 'img')
-    .attr('aria-label', 'Scatter of ' + CONFIG.yLabel + ' versus ' + CONFIG.xLabel +
-      ', with a fit line you can drag or adjust with sliders.');
+    .attr('aria-label', 'PCA of patients by ' + CONFIG.xLabel + ' and ' + CONFIG.yLabel +
+      ', with a rotatable projection axis through the mean.');
   var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-  var x = d3.scaleLinear().domain([22, 78]).range([0, iw]);
-  var y = d3.scaleLinear().domain([100, 175]).range([ih, 0]);
-  var diamond = d3.symbol().type(d3.symbolDiamond).size(120);
+  var xr = d3.extent(DATA, function (d) { return d[0]; });
+  var yr = d3.extent(DATA, function (d) { return d[1]; });
+  var sc = Math.min(iw / ((xr[1] - xr[0]) * 1.35), ih / ((yr[1] - yr[0]) * 1.35));   // px per mmHg, equal
+  var x = d3.scaleLinear().domain([meanX - iw / (2 * sc), meanX + iw / (2 * sc)]).range([0, iw]);
+  var y = d3.scaleLinear().domain([meanY - ih / (2 * sc), meanY + ih / (2 * sc)]).range([ih, 0]);
+
+  var clipId = 'clip-' + CONFIG.unitId;
+  svg.append('defs').append('clipPath').attr('id', clipId).append('rect').attr('width', iw).attr('height', ih);
 
   var gx = g.append('g').attr('transform', 'translate(0,' + ih + ')');
   var gy = g.append('g');
   g.append('text').attr('class', 'pl-axis-label').attr('x', iw / 2).attr('y', ih + 38)
     .attr('text-anchor', 'middle').text(CONFIG.xLabel);
   g.append('text').attr('class', 'pl-axis-label').attr('transform', 'rotate(-90)')
-    .attr('x', -ih / 2).attr('y', -40).attr('text-anchor', 'middle').text(CONFIG.yLabel);
+    .attr('x', -ih / 2).attr('y', -46).attr('text-anchor', 'middle').text(CONFIG.yLabel);
 
-  var gResid = g.append('g');
-  var gDots = g.append('g');
-  var lsLine = g.append('line').attr('class', 'pl-ls-line').style('display', 'none');
-  var fitLine = g.append('line').attr('class', 'pl-fit-line');
-  var gHandles = g.append('g');
+  var gClip = g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+  var ellipse = gClip.append('path');
+  var gResid = gClip.append('g');
+  var axisLine = gClip.append('line');
+  var pc1Line = gClip.append('line'), pc2Line = gClip.append('line');
+  var gFeet = gClip.append('g');
+  var gPoints = g.append('g');
+  var meanMark = g.append('path');
 
   function drawAxes() {
     gx.call(d3.axisBottom(x).ticks(7));
@@ -161,121 +171,106 @@
       ax.selectAll('text').attr('fill', PL.viz.textColor());
     });
   }
-
   function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
 
   function redraw() {
-    var P = pts(), xd = x.domain();
+    var th = state.theta, t = th * DEG, ux = Math.cos(t), uy = Math.sin(t);
 
-    var rs = gResid.selectAll('line').data(P);
-    rs.enter().append('line').attr('class', 'pl-resid').merge(rs)
-      .attr('x1', function (d) { return x(d[0]); })
-      .attr('x2', function (d) { return x(d[0]); })
-      .attr('y1', function (d) { return y(d[1]); })
-      .attr('y2', function (d) { return y(state.w0 + state.w1 * d[0]); });
+    // candidate projection axis through the mean
+    var HL = x.domain()[1] - x.domain()[0];
+    axisLine.attr('x1', x(meanX - HL * ux)).attr('y1', y(meanY - HL * uy))
+      .attr('x2', x(meanX + HL * ux)).attr('y2', y(meanY + HL * uy))
+      .attr('stroke', ok.purple).attr('stroke-width', 2.5);
+
+    // perpendicular feet + residual segments (maximize variance <=> minimize residuals)
+    var feet = DATA.map(function (p) { var dx = p[0] - meanX, dy = p[1] - meanY, tt = dx * ux + dy * uy; return [meanX + tt * ux, meanY + tt * uy]; });
+    var rs = gResid.selectAll('line').data(DATA);
+    rs.enter().append('line').merge(rs)
+      .attr('x1', function (d) { return x(d[0]); }).attr('y1', function (d) { return y(d[1]); })
+      .attr('x2', function (d, i) { return x(feet[i][0]); }).attr('y2', function (d, i) { return y(feet[i][1]); })
+      .attr('stroke', PL.viz.textColor()).attr('stroke-opacity', 0.28).attr('stroke-width', 1);
     rs.exit().remove();
+    var ft = gFeet.selectAll('circle').data(feet);
+    ft.enter().append('circle').attr('r', 2.5).merge(ft)
+      .attr('cx', function (d) { return x(d[0]); }).attr('cy', function (d) { return y(d[1]); })
+      .attr('fill', ok.purple);
+    ft.exit().remove();
 
-    var ds = gDots.selectAll('circle').data(CONFIG.data);
-    ds.enter().append('circle').attr('class', 'pl-dot').attr('r', 5).merge(ds)
-      .attr('cx', function (d) { return x(d[0]); })
-      .attr('cy', function (d) { return y(d[1]); });
-    ds.exit().remove();
-
-    var ol = gDots.selectAll('path.pl-outlier').data(state.outlierOn ? [CONFIG.outlier] : []);
-    ol.enter().append('path').attr('class', 'pl-outlier').attr('d', diamond).merge(ol)
-      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });
-    ol.exit().remove();
-
-    fitLine
-      .attr('x1', x(xd[0])).attr('y1', y(state.w0 + state.w1 * xd[0]))
-      .attr('x2', x(xd[1])).attr('y2', y(state.w0 + state.w1 * xd[1]));
-
-    var hs = [
-      { x: xd[0], y: state.w0 + state.w1 * xd[0], i: 0 },
-      { x: xd[1], y: state.w0 + state.w1 * xd[1], i: 1 }
-    ];
-    var hh = gHandles.selectAll('circle').data(hs);
-    hh.enter().append('circle').attr('class', 'pl-handle').attr('r', 8)
-      .attr('tabindex', 0).attr('role', 'slider').attr('aria-label', 'Drag to tilt the fit line')
-      .call(d3.drag().on('drag', onDrag))
-      .merge(hh)
-      .attr('cx', function (d) { return x(d.x); })
-      .attr('cy', function (d) { return y(d.y); })
-      .each(function (d) { this.__i = d.i; });
-
-    var ls = lsq(P);
-    if (state.showLS) {
-      lsLine.style('display', null)
-        .attr('x1', x(xd[0])).attr('y1', y(ls.w0 + ls.w1 * xd[0]))
-        .attr('x2', x(xd[1])).attr('y2', y(ls.w0 + ls.w1 * xd[1]));
+    // principal components + 1-sigma covariance ellipse
+    if (state.showComponents) {
+      var r1 = Math.sqrt(L1), r2 = Math.sqrt(L2);
+      pc1Line.style('display', null)
+        .attr('x1', x(meanX - r1 * V1[0])).attr('y1', y(meanY - r1 * V1[1]))
+        .attr('x2', x(meanX + r1 * V1[0])).attr('y2', y(meanY + r1 * V1[1]))
+        .attr('stroke', ok.green).attr('stroke-width', 3).attr('stroke-dasharray', '9 4');
+      pc2Line.style('display', null)
+        .attr('x1', x(meanX - r2 * V2[0])).attr('y1', y(meanY - r2 * V2[1]))
+        .attr('x2', x(meanX + r2 * V2[0])).attr('y2', y(meanY + r2 * V2[1]))
+        .attr('stroke', ok.orange).attr('stroke-width', 3).attr('stroke-dasharray', '2 3');
+      var pts = [], k;
+      for (k = 0; k <= 64; k++) {
+        var aa = k / 64 * 2 * Math.PI, cc = Math.cos(aa), ss = Math.sin(aa);
+        pts.push([meanX + r1 * cc * V1[0] + r2 * ss * V2[0], meanY + r1 * cc * V1[1] + r2 * ss * V2[1]]);
+      }
+      ellipse.style('display', null)
+        .attr('d', d3.line().x(function (p) { return x(p[0]); }).y(function (p) { return y(p[1]); })(pts))
+        .attr('fill', 'none').attr('stroke', PL.viz.textColor()).attr('stroke-opacity', 0.4)
+        .attr('stroke-width', 1).attr('stroke-dasharray', '3 3');
     } else {
-      lsLine.style('display', 'none');
+      pc1Line.style('display', 'none'); pc2Line.style('display', 'none'); ellipse.style('display', 'none');
     }
 
-    setText('val-w0', state.w0.toFixed(2));
-    setText('val-w1', state.w1.toFixed(3));
-    setText('val-mse', mse(P, state.w0, state.w1).toFixed(2));
-    setText('val-lsmse', mse(P, ls.w0, ls.w1).toFixed(2));
-  }
+    // patients
+    var ds = gPoints.selectAll('circle').data(DATA);
+    ds.enter().append('circle').attr('r', 5).merge(ds)
+      .attr('cx', function (d) { return x(d[0]); }).attr('cy', function (d) { return y(d[1]); })
+      .attr('fill', ok.blue).attr('fill-opacity', 0.9)
+      .attr('stroke', PL.viz.cssVar('--pl-card', '#fff')).attr('stroke-width', 1);
+    ds.exit().remove();
 
-  function onDrag(event) {
-    var i = this.__i, xd = x.domain();
-    var newY = y.invert(event.y);
-    var yL = (i === 0) ? newY : (state.w0 + state.w1 * xd[0]);
-    var yR = (i === 1) ? newY : (state.w0 + state.w1 * xd[1]);
-    var w1 = (yR - yL) / (xd[1] - xd[0]);
-    var w0 = yL - w1 * xd[0];
-    state.w1 = clamp(w1, SLIDER.w1.min, SLIDER.w1.max);
-    state.w0 = clamp(w0, SLIDER.w0.min, SLIDER.w0.max);
-    syncControls();
-    redraw();
+    // mean marker (distinct cross; all axes pass through it)
+    meanMark.attr('d', d3.symbol().type(d3.symbolCross).size(170)())
+      .attr('transform', 'translate(' + x(meanX) + ',' + y(meanY) + ')')
+      .attr('fill', PL.viz.textColor()).attr('stroke', PL.viz.cssVar('--pl-card', '#fff')).attr('stroke-width', 1);
+
+    // readouts
+    var pv = projVar(th);
+    setText('val-theta', th + '°');
+    setText('val-varcap', (100 * pv / TRACE).toFixed(1) + '%');
+    setText('val-projvar', pv.toFixed(1));
+    setText('val-recon', Math.max(0, TRACE - pv).toFixed(1));
   }
 
   // ---- controls -----------------------------------------------------------
-  function bindSlider(name) {
-    var range = document.getElementById('rng-' + name);
-    var num = document.getElementById('num-' + name);
-    var s = SLIDER[name];
-    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state[name]; });
-    range.addEventListener('input', function () { state[name] = parseFloat(range.value); num.value = range.value; redraw(); });
-    num.addEventListener('input', function () {
-      var v = parseFloat(num.value); if (isNaN(v)) return;
-      v = clamp(v, s.min, s.max); state[name] = v; range.value = v; redraw();
-    });
+  function bindTheta() {
+    var range = document.getElementById('rng-theta'), num = document.getElementById('num-theta'), s = CONFIG.theta;
+    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state.theta; });
+    range.addEventListener('input', function () { state.theta = parseInt(range.value, 10); num.value = range.value; redraw(); });
+    num.addEventListener('input', function () { var v = parseInt(num.value, 10); if (isNaN(v)) return; v = clamp(v, s.min, s.max); state.theta = v; range.value = v; redraw(); });
   }
-  function syncControls() {
-    ['w0', 'w1'].forEach(function (n) {
-      var r = document.getElementById('rng-' + n), m = document.getElementById('num-' + n);
-      if (r) r.value = state[n];
-      if (m) m.value = (n === 'w1' ? state[n].toFixed(3) : state[n].toFixed(2));
-    });
-  }
+  function syncTheta() { var r = document.getElementById('rng-theta'), n = document.getElementById('num-theta'); if (r) r.value = state.theta; if (n) n.value = state.theta; }
 
-  document.getElementById('btn-ls').addEventListener('click', function () {
-    state.showLS = !state.showLS;
-    this.setAttribute('aria-pressed', String(state.showLS));
-    this.textContent = state.showLS ? 'Hide least-squares solution' : 'Show least-squares solution';
-    redraw();
+  document.getElementById('btn-snap').addEventListener('click', function () {
+    state.theta = clamp(Math.round(PC1_DEG), CONFIG.theta.min, CONFIG.theta.max);
+    syncTheta(); redraw();
   });
-  document.getElementById('btn-outlier').addEventListener('click', function () {
-    state.outlierOn = !state.outlierOn;
-    this.setAttribute('aria-pressed', String(state.outlierOn));
-    this.textContent = state.outlierOn ? 'Remove outlier' : 'Add outlier';
+  var btnComp = document.getElementById('btn-components');
+  btnComp.addEventListener('click', function () {
+    state.showComponents = !state.showComponents;
+    this.setAttribute('aria-pressed', String(state.showComponents));
+    this.textContent = state.showComponents ? 'Hide both components' : 'Show both components';
     redraw();
   });
   document.getElementById('btn-reset').addEventListener('click', function () {
-    state.w0 = DEFAULTS.w0; state.w1 = DEFAULTS.w1; state.showLS = false; state.outlierOn = false;
-    document.getElementById('btn-ls').textContent = 'Show least-squares solution';
-    document.getElementById('btn-ls').setAttribute('aria-pressed', 'false');
-    document.getElementById('btn-outlier').textContent = 'Add outlier';
-    document.getElementById('btn-outlier').setAttribute('aria-pressed', 'false');
-    syncControls(); redraw();
+    state.theta = CONFIG.theta.default; state.showComponents = false;
+    btnComp.textContent = 'Show both components'; btnComp.setAttribute('aria-pressed', 'false');
+    syncTheta(); redraw();
   });
 
   // ---- init ---------------------------------------------------------------
-  bindSlider('w0'); bindSlider('w1');
+  bindTheta();
   drawAxes(); redraw();
-  PL.viz.onThemeChange(drawAxes);
+  PL.viz.onThemeChange(function () { drawAxes(); redraw(); });
   PL.mountQuiz(document.getElementById('quiz'), CONFIG);
 
   window.addEventListener('load', function () {

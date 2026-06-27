@@ -42,33 +42,26 @@
     <div class="pl-controls">
       <div class="pl-controls-row">
         <div class="pl-control">
-          <label for="rng-w0">Intercept $w_0$</label>
+          <label for="rng-theta">Axis angle $\theta$ (°)</label>
           <div class="pl-control-inputs">
-            <input type="range" id="rng-w0" aria-label="Intercept w0">
-            <input type="number" id="num-w0" aria-label="Intercept w0 value">
-          </div>
-        </div>
-        <div class="pl-control">
-          <label for="rng-w1">Slope $w_1$</label>
-          <div class="pl-control-inputs">
-            <input type="range" id="rng-w1" aria-label="Slope w1">
-            <input type="number" id="num-w1" aria-label="Slope w1 value">
+            <input type="range" id="rng-theta" aria-label="Projection axis angle theta in degrees">
+            <input type="number" id="num-theta" aria-label="Projection axis angle theta value">
           </div>
         </div>
       </div>
       <div class="pl-btns">
-        <button class="pl-btn" id="btn-ls" type="button" aria-pressed="false">Show least-squares solution</button>
-        <button class="pl-btn" id="btn-outlier" type="button" aria-pressed="false">Add outlier</button>
+        <button class="pl-btn" id="btn-snap" type="button">Snap to PC1</button>
+        <button class="pl-btn" id="btn-components" type="button" aria-pressed="false">Show both components</button>
         <button class="pl-btn" id="btn-reset" type="button">Reset</button>
       </div>
     </div>
 
     <div class="pl-info">
       <div class="pl-info-grid">
-        <div class="pl-cell"><div class="pl-cell-label">Intercept $w_0$</div><div class="pl-cell-value" id="val-w0">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Slope $w_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Your loss (MSE)</div><div class="pl-cell-value" id="val-mse">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Least-squares MSE</div><div class="pl-cell-value" id="val-lsmse">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Axis angle $\theta$</div><div class="pl-cell-value" id="val-theta">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Variance captured</div><div class="pl-cell-value" id="val-varcap">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Projected variance</div><div class="pl-cell-value" id="val-projvar">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Reconstruction error</div><div class="pl-cell-value" id="val-recon">—</div></div>
       </div>
     </div>
 

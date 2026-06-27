@@ -26,6 +26,7 @@
       <div>$$\mathbb{E}\big[(y - \hat f(\mathbf{x}))^2\big] = \underbrace{(\mathbb{E}[\hat f(\mathbf{x})] - f(\mathbf{x}))^2}_{\text{bias}^2} + \underbrace{\mathrm{Var}[\hat f(\mathbf{x})]}_{\text{variance}} + \sigma^2$$</div>
       <div class="pl-eq-note">ridge regression trades variance for bias</div>
       <div>$$\hat{\mathbf{w}} = \arg\min_{\mathbf{w}} \lVert \mathbf{y} - \mathbf{X}\mathbf{w} \rVert^2 + \lambda \lVert \mathbf{w} \rVert^2$$</div>
+      <div class="pl-eq-note">(the intercept $w_0$ is left unpenalized, as is standard)</div>
     </div>
 
     <div class="pl-panel">

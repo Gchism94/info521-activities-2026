@@ -342,14 +342,15 @@
 
   // ---- controls -----------------------------------------------------------
   function bindDegree() {
-    var range = document.getElementById('rng-degree');
     var num = document.getElementById('num-degree');
     var d = CONFIG.degree;
-    [range, num].forEach(function (inp) { inp.min = d.min; inp.max = d.max; inp.step = d.step; inp.value = state.degree; });
-    range.addEventListener('input', function () { state.degree = parseInt(range.value, 10); num.value = range.value; redraw(); });
-    num.addEventListener('input', function () {
-      var v = parseInt(num.value, 10); if (isNaN(v)) return;
-      v = clamp(v, d.min, d.max); state.degree = v; range.value = v; redraw();
+    num.min = d.min; num.max = d.max; num.step = 1; num.value = state.degree;
+    num.addEventListener('change', function () {        // 'change' (commit), not per-keystroke
+      var v = parseInt(num.value, 10);
+      if (isNaN(v)) { num.value = state.degree; return; }   // parse failed: restore previous value
+      v = clamp(v, d.min, d.max);
+      num.value = v; state.degree = v;
+      redraw();
     });
   }
   function bindLambda() {
@@ -368,8 +369,8 @@
     });
   }
   function syncControls() {
-    var rd = document.getElementById('rng-degree'), nd = document.getElementById('num-degree');
-    if (rd) rd.value = state.degree; if (nd) nd.value = String(state.degree);
+    var nd = document.getElementById('num-degree');
+    if (nd) nd.value = String(state.degree);
     var rl = document.getElementById('rng-lambda'), nl = document.getElementById('num-lambda');
     if (rl) rl.value = lambdaToPos(state.lambda); if (nl) nl.value = fmtLambda(state.lambda);
   }

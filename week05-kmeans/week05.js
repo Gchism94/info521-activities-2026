@@ -281,18 +281,19 @@
 
   // ---- controls -----------------------------------------------------------
   function bindK() {
-    var range = document.getElementById('rng-k'), num = document.getElementById('num-k'), s = CONFIG.k;
-    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state.k; });
-    function setK(v) {
-      v = clamp(Math.round(v), s.min, s.max); state.k = v;
-      range.value = v; num.value = v; initCentroids(); redraw();
-    }
-    range.addEventListener('input', function () { setK(parseInt(range.value, 10)); });
-    num.addEventListener('input', function () { var v = parseInt(num.value, 10); if (!isNaN(v)) setK(v); });
+    var num = document.getElementById('num-k'), s = CONFIG.k;
+    num.min = s.min; num.max = s.max; num.step = 1; num.value = state.k;
+    num.addEventListener('change', function () {        // 'change' (commit), not per-keystroke
+      var v = parseInt(num.value, 10);
+      if (isNaN(v)) { num.value = state.k; return; }    // parse failed: restore previous value
+      v = clamp(Math.round(v), s.min, s.max);
+      num.value = v; state.k = v;
+      initCentroids(); redraw();                        // redraw refreshes the "Clusters k" readout
+    });
   }
   function syncK() {
-    var r = document.getElementById('rng-k'), n = document.getElementById('num-k');
-    if (r) r.value = state.k; if (n) n.value = state.k;
+    var n = document.getElementById('num-k');
+    if (n) n.value = state.k;
   }
 
   document.getElementById('btn-step').addEventListener('click', function () {

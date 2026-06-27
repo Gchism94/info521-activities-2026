@@ -1,7 +1,7 @@
 /* ============================================================================
-   Week 1 — The Linear Model (least-squares explorer + mastery quiz).
+   Week 2 — Bias, Variance, Regularization (polynomial ridge explorer + quiz).
    A "thin" week module: dataset + drawViz + quiz bank. Everything reusable
-   lives in ../shared/. Only CONFIG changes between weeks.
+   lives in ../shared/. Only this file changes between weeks.
    ========================================================================== */
 (function () {
   'use strict';
@@ -107,26 +107,138 @@
     ]
   };
 
-  // ---- math helpers -------------------------------------------------------
-  function lsq(pts) {
-    var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0, i, x, y;
-    for (i = 0; i < n; i++) { x = pts[i][0]; y = pts[i][1]; sx += x; sy += y; sxx += x * x; sxy += x * y; }
-    var xbar = sx / n, ybar = sy / n, denom = sxx - n * xbar * xbar;
-    var w1 = denom !== 0 ? (sxy - n * xbar * ybar) / denom : 0;
-    return { w0: ybar - w1 * xbar, w1: w1 };
-  }
-  function mse(pts, w0, w1) {
-    var s = 0, i, r;
-    for (i = 0; i < pts.length; i++) { r = pts[i][1] - (w0 + w1 * pts[i][0]); s += r * r; }
-    return s / pts.length;
-  }
+  // ---- numerics -----------------------------------------------------------
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  // ---- state --------------------------------------------------------------
-  var DEFAULTS = { w0: 95, w1: 0.4 };
-  var SLIDER = { w0: { min: 60, max: 140, step: 0.5 }, w1: { min: -0.5, max: 2.5, step: 0.01 } };
-  var state = { w0: DEFAULTS.w0, w1: DEFAULTS.w1, showLS: false, outlierOn: false };
-  function pts() { return state.outlierOn ? CONFIG.data.concat([CONFIG.outlier]) : CONFIG.data; }
+  // Scale x to roughly [-1, 1] BEFORE building the Vandermonde matrix. Without
+  // this, degree-9 terms (x^9 with x up to 100) wreck the condition number and
+  // the fit garbles. This is the one easy-to-miss numerical-stability bug.
+  var xMid = (CONFIG.xDomain[0] + CONFIG.xDomain[1]) / 2;
+  var xHalf = (CONFIG.xDomain[1] - CONFIG.xDomain[0]) / 2 || 1;
+  function scaleX(xv) { return (xv - xMid) / xHalf; }
+
+  // Standard-normal noise via Box-Muller.
+  function gaussian() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  // Vandermonde row [1, s, s^2, ..., s^deg] for a scaled input s.
+  function vrow(s, deg) {
+    var r = [1], p = 1, k;
+    for (k = 1; k <= deg; k++) { p *= s; r.push(p); }
+    return r;
+  }
+
+  // Solve A w = b by Gaussian elimination with partial pivoting (small system).
+  function solveLinear(A, b) {
+    var n = A.length, i, j, k;
+    var M = A.map(function (row, idx) { return row.slice().concat([b[idx]]); });
+    for (i = 0; i < n; i++) {
+      var piv = i;
+      for (k = i + 1; k < n; k++) { if (Math.abs(M[k][i]) > Math.abs(M[piv][i])) piv = k; }
+      if (piv !== i) { var tmp = M[i]; M[i] = M[piv]; M[piv] = tmp; }
+      var d = M[i][i];
+      if (Math.abs(d) < 1e-12) continue;
+      for (k = i + 1; k < n; k++) {
+        var f = M[k][i] / d;
+        for (j = i; j <= n; j++) M[k][j] -= f * M[i][j];
+      }
+    }
+    var w = new Array(n).fill(0);
+    for (i = n - 1; i >= 0; i--) {
+      var s = M[i][n];
+      for (j = i + 1; j < n; j++) s -= M[i][j] * w[j];
+      w[i] = Math.abs(M[i][i]) < 1e-12 ? 0 : s / M[i][i];
+    }
+    return w;
+  }
+
+  // Ridge least squares on the polynomial design matrix:
+  //   w_hat = (X^T X + lambda*R)^-1 X^T y,  R = diag(0, 1, 1, ...)
+  // The intercept (index 0) is NOT penalized, so lambda -> infinity gives the
+  // flat mean fit rather than collapsing to zero far below the data.
+  function ridgeFit(scaledXs, ys, deg, lambda) {
+    var m = deg + 1, n = scaledXs.length, i, j, k;
+    var rows = scaledXs.map(function (s) { return vrow(s, deg); });
+    var A = [], b = [];
+    for (i = 0; i < m; i++) {
+      A[i] = [];
+      for (j = 0; j < m; j++) {
+        var sum = 0;
+        for (k = 0; k < n; k++) sum += rows[k][i] * rows[k][j];
+        A[i][j] = sum;
+      }
+      var sb = 0;
+      for (k = 0; k < n; k++) sb += rows[k][i] * ys[k];
+      b[i] = sb;
+    }
+    for (i = 1; i < m; i++) A[i][i] += lambda; // i = 0 is the unpenalized intercept
+    return solveLinear(A, b);
+  }
+
+  function predict(w, xv) {
+    var s = scaleX(xv), y = 0, p = 1, k;
+    for (k = 0; k < w.length; k++) { y += w[k] * p; p *= s; }
+    return y;
+  }
+  function mseOf(xs, ys, w) {
+    var sum = 0, i, r;
+    for (i = 0; i < xs.length; i++) { r = ys[i] - predict(w, xs[i]); sum += r * r; }
+    return xs.length ? sum / xs.length : 0;
+  }
+
+  // ---- lambda <-> slider position (log scale, exact 0 at the far left) -----
+  var LAM_LO_EXP = -2, LAM_HI_EXP = 3, LAM_POS = 1000; // pos 1..1000 -> 10^-2..10^3
+  function posToLambda(pos) {
+    if (pos <= 0) return 0;
+    return Math.pow(10, LAM_LO_EXP + (LAM_HI_EXP - LAM_LO_EXP) * (pos / LAM_POS));
+  }
+  function lambdaToPos(lam) {
+    if (lam <= 0) return 0;
+    var frac = (Math.log(lam) / Math.LN10 - LAM_LO_EXP) / (LAM_HI_EXP - LAM_LO_EXP);
+    return Math.round(clamp(frac, 0, 1) * LAM_POS);
+  }
+  function fmtLambda(lam) {
+    if (lam <= 0) return '0';
+    if (lam < 1) return lam.toFixed(3);
+    if (lam < 10) return lam.toFixed(2);
+    if (lam < 100) return lam.toFixed(1);
+    return lam.toFixed(0);
+  }
+
+  // ---- data: fixed design points, resampled noise -------------------------
+  function linspace(a, bv, n) {
+    var out = [], i;
+    for (i = 0; i < n; i++) out.push(a + (bv - a) * (n === 1 ? 0.5 : i / (n - 1)));
+    return out;
+  }
+  // Training x positions are FIXED; only the noise is resampled, so the spread
+  // of refits is variance from noise (not from moving the design points).
+  var trainX = linspace(CONFIG.xDomain[0] + 3, CONFIG.xDomain[1] - 3, CONFIG.nTrain);
+  var trainXs = trainX.map(scaleX);
+  var testX = linspace(CONFIG.xDomain[0] + 1, CONFIG.xDomain[1] - 1, CONFIG.nTest);
+  function noisyY(xs) {
+    return xs.map(function (xv) { return CONFIG.trueFn(xv) + CONFIG.noiseSd * gaussian(); });
+  }
+  function makeResamples() {
+    var out = [], i;
+    for (i = 0; i < CONFIG.resamples; i++) out.push(noisyY(trainX));
+    return out;
+  }
+
+  var trainY = noisyY(trainX);
+  var testY = noisyY(testX);          // held-out set, fixed across resamples
+  var resampleYs = makeResamples();   // 20 datasets for the overlay
+
+  var state = {
+    degree: CONFIG.degree.default,
+    lambda: CONFIG.lambda.default,
+    showOverlay: false,
+    showTest: false
+  };
 
   // ---- chart scaffold -----------------------------------------------------
   var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 54 };
@@ -136,11 +248,16 @@
     .attr('width', '100%')
     .attr('role', 'img')
     .attr('aria-label', 'Scatter of ' + CONFIG.yLabel + ' versus ' + CONFIG.xLabel +
-      ', with a fit line you can drag or adjust with sliders.');
+      ', with the true curve and an adjustable polynomial ridge fit.');
   var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-  var x = d3.scaleLinear().domain([22, 78]).range([0, iw]);
-  var y = d3.scaleLinear().domain([100, 175]).range([ih, 0]);
-  var diamond = d3.symbol().type(d3.symbolDiamond).size(120);
+  var x = d3.scaleLinear().domain(CONFIG.xDomain).range([0, iw]);
+  var y = d3.scaleLinear().domain(CONFIG.yDomain).range([ih, 0]);
+  var triangle = d3.symbol().type(d3.symbolTriangle).size(46);
+
+  // clip curves so wild high-degree fits stay inside the plot area
+  var clipId = 'clip-' + CONFIG.unitId;
+  svg.append('defs').append('clipPath').attr('id', clipId)
+    .append('rect').attr('width', iw).attr('height', ih);
 
   var gx = g.append('g').attr('transform', 'translate(0,' + ih + ')');
   var gy = g.append('g');
@@ -149,11 +266,18 @@
   g.append('text').attr('class', 'pl-axis-label').attr('transform', 'rotate(-90)')
     .attr('x', -ih / 2).attr('y', -40).attr('text-anchor', 'middle').text(CONFIG.yLabel);
 
-  var gResid = g.append('g');
-  var gDots = g.append('g');
-  var lsLine = g.append('line').attr('class', 'pl-ls-line').style('display', 'none');
-  var fitLine = g.append('line').attr('class', 'pl-fit-line');
-  var gHandles = g.append('g');
+  var gCurves = g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+  var gOverlay = gCurves.append('g');                            // 20-fit overlay
+  var trueCurve = gCurves.append('path').attr('class', 'pl-true-curve');
+  var fitCurve = gCurves.append('path').attr('class', 'pl-fit-curve');
+  var gTest = g.append('g');                                     // test points
+  var gTrain = g.append('g');                                    // training points
+
+  var line = d3.line()
+    .x(function (d) { return x(d[0]); })
+    .y(function (d) { return y(d[1]); });
+  var dense = linspace(CONFIG.xDomain[0], CONFIG.xDomain[1], 160);
+  function curvePoints(fn) { return dense.map(function (xv) { return [xv, fn(xv)]; }); }
 
   function drawAxes() {
     gx.call(d3.axisBottom(x).ticks(7));
@@ -163,119 +287,125 @@
       ax.selectAll('text').attr('fill', PL.viz.textColor());
     });
   }
-
   function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
 
+  // ---- draw ---------------------------------------------------------------
   function redraw() {
-    var P = pts(), xd = x.domain();
+    var w = ridgeFit(trainXs, trainY, state.degree, state.lambda);
 
-    var rs = gResid.selectAll('line').data(P);
-    rs.enter().append('line').attr('class', 'pl-resid').merge(rs)
-      .attr('x1', function (d) { return x(d[0]); })
-      .attr('x2', function (d) { return x(d[0]); })
-      .attr('y1', function (d) { return y(d[1]); })
-      .attr('y2', function (d) { return y(state.w0 + state.w1 * d[0]); });
-    rs.exit().remove();
+    // true curve: sky blue, dashed \u2014 the fixed reference
+    trueCurve.attr('d', line(curvePoints(CONFIG.trueFn)))
+      .attr('fill', 'none').attr('stroke', ok.sky)
+      .attr('stroke-width', 2).attr('stroke-dasharray', '6 4');
 
-    var ds = gDots.selectAll('circle').data(CONFIG.data);
-    ds.enter().append('circle').attr('class', 'pl-dot').attr('r', 5).merge(ds)
+    // 20-fit overlay: refit each resampled dataset at the CURRENT degree/lambda
+    // so the fan reacts live (widens with degree, tightens with lambda).
+    var overlayData = state.showOverlay ? resampleYs.map(function (ys) {
+      var wr = ridgeFit(trainXs, ys, state.degree, state.lambda);
+      return curvePoints(function (xv) { return predict(wr, xv); });
+    }) : [];
+    var ov = gOverlay.selectAll('path').data(overlayData);
+    ov.enter().append('path')
+      .attr('fill', 'none').attr('stroke', ok.purple)
+      .attr('stroke-width', 1).attr('stroke-opacity', 0.22)
+      .merge(ov)
+      .attr('d', function (d) { return line(d); });
+    ov.exit().remove();
+
+    // current fit: reddish purple, solid, bold
+    fitCurve.attr('d', line(curvePoints(function (xv) { return predict(w, xv); })))
+      .attr('fill', 'none').attr('stroke', ok.purple).attr('stroke-width', 2.5);
+
+    // test points: orange triangles (shape cue), faint, only when toggled on
+    var testData = state.showTest ? testX.map(function (xv, i) { return [xv, testY[i]]; }) : [];
+    var ts = gTest.selectAll('path').data(testData);
+    ts.enter().append('path').attr('d', triangle)
+      .attr('fill', ok.orange).attr('fill-opacity', 0.55)
+      .merge(ts)
+      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });
+    ts.exit().remove();
+
+    // training points: blue circles
+    var trainData = trainX.map(function (xv, i) { return [xv, trainY[i]]; });
+    var ds = gTrain.selectAll('circle').data(trainData);
+    ds.enter().append('circle').attr('class', 'pl-dot').attr('r', 5)
+      .merge(ds)
       .attr('cx', function (d) { return x(d[0]); })
       .attr('cy', function (d) { return y(d[1]); });
     ds.exit().remove();
 
-    var ol = gDots.selectAll('path.pl-outlier').data(state.outlierOn ? [CONFIG.outlier] : []);
-    ol.enter().append('path').attr('class', 'pl-outlier').attr('d', diamond).merge(ol)
-      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });
-    ol.exit().remove();
-
-    fitLine
-      .attr('x1', x(xd[0])).attr('y1', y(state.w0 + state.w1 * xd[0]))
-      .attr('x2', x(xd[1])).attr('y2', y(state.w0 + state.w1 * xd[1]));
-
-    var hs = [
-      { x: xd[0], y: state.w0 + state.w1 * xd[0], i: 0 },
-      { x: xd[1], y: state.w0 + state.w1 * xd[1], i: 1 }
-    ];
-    var hh = gHandles.selectAll('circle').data(hs);
-    hh.enter().append('circle').attr('class', 'pl-handle').attr('r', 8)
-      .attr('tabindex', 0).attr('role', 'slider').attr('aria-label', 'Drag to tilt the fit line')
-      .call(d3.drag().on('drag', onDrag))
-      .merge(hh)
-      .attr('cx', function (d) { return x(d.x); })
-      .attr('cy', function (d) { return y(d.y); })
-      .each(function (d) { this.__i = d.i; });
-
-    var ls = lsq(P);
-    if (state.showLS) {
-      lsLine.style('display', null)
-        .attr('x1', x(xd[0])).attr('y1', y(ls.w0 + ls.w1 * xd[0]))
-        .attr('x2', x(xd[1])).attr('y2', y(ls.w0 + ls.w1 * xd[1]));
-    } else {
-      lsLine.style('display', 'none');
-    }
-
-    setText('val-w0', state.w0.toFixed(2));
-    setText('val-w1', state.w1.toFixed(3));
-    setText('val-mse', mse(P, state.w0, state.w1).toFixed(2));
-    setText('val-lsmse', mse(P, ls.w0, ls.w1).toFixed(2));
-  }
-
-  function onDrag(event) {
-    var i = this.__i, xd = x.domain();
-    var newY = y.invert(event.y);
-    var yL = (i === 0) ? newY : (state.w0 + state.w1 * xd[0]);
-    var yR = (i === 1) ? newY : (state.w0 + state.w1 * xd[1]);
-    var w1 = (yR - yL) / (xd[1] - xd[0]);
-    var w0 = yL - w1 * xd[0];
-    state.w1 = clamp(w1, SLIDER.w1.min, SLIDER.w1.max);
-    state.w0 = clamp(w0, SLIDER.w0.min, SLIDER.w0.max);
-    syncControls();
-    redraw();
+    setText('val-degree', String(state.degree));
+    setText('val-lambda', fmtLambda(state.lambda));
+    setText('val-trainmse', mseOf(trainX, trainY, w).toFixed(2));
+    setText('val-testmse', mseOf(testX, testY, w).toFixed(2));
   }
 
   // ---- controls -----------------------------------------------------------
-  function bindSlider(name) {
-    var range = document.getElementById('rng-' + name);
-    var num = document.getElementById('num-' + name);
-    var s = SLIDER[name];
-    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state[name]; });
-    range.addEventListener('input', function () { state[name] = parseFloat(range.value); num.value = range.value; redraw(); });
+  function bindDegree() {
+    var range = document.getElementById('rng-degree');
+    var num = document.getElementById('num-degree');
+    var d = CONFIG.degree;
+    [range, num].forEach(function (inp) { inp.min = d.min; inp.max = d.max; inp.step = d.step; inp.value = state.degree; });
+    range.addEventListener('input', function () { state.degree = parseInt(range.value, 10); num.value = range.value; redraw(); });
+    num.addEventListener('input', function () {
+      var v = parseInt(num.value, 10); if (isNaN(v)) return;
+      v = clamp(v, d.min, d.max); state.degree = v; range.value = v; redraw();
+    });
+  }
+  function bindLambda() {
+    var range = document.getElementById('rng-lambda');
+    var num = document.getElementById('num-lambda');
+    range.min = 0; range.max = LAM_POS; range.step = 1; range.value = lambdaToPos(state.lambda);
+    num.min = CONFIG.lambda.min; num.max = CONFIG.lambda.max; num.step = 'any'; num.value = fmtLambda(state.lambda);
+    range.addEventListener('input', function () {
+      state.lambda = posToLambda(parseInt(range.value, 10));
+      num.value = fmtLambda(state.lambda); redraw();
+    });
     num.addEventListener('input', function () {
       var v = parseFloat(num.value); if (isNaN(v)) return;
-      v = clamp(v, s.min, s.max); state[name] = v; range.value = v; redraw();
+      v = clamp(v, CONFIG.lambda.min, CONFIG.lambda.max); state.lambda = v;
+      range.value = lambdaToPos(v); redraw();
     });
   }
   function syncControls() {
-    ['w0', 'w1'].forEach(function (n) {
-      var r = document.getElementById('rng-' + n), m = document.getElementById('num-' + n);
-      if (r) r.value = state[n];
-      if (m) m.value = (n === 'w1' ? state[n].toFixed(3) : state[n].toFixed(2));
-    });
+    var rd = document.getElementById('rng-degree'), nd = document.getElementById('num-degree');
+    if (rd) rd.value = state.degree; if (nd) nd.value = String(state.degree);
+    var rl = document.getElementById('rng-lambda'), nl = document.getElementById('num-lambda');
+    if (rl) rl.value = lambdaToPos(state.lambda); if (nl) nl.value = fmtLambda(state.lambda);
   }
 
-  document.getElementById('btn-ls').addEventListener('click', function () {
-    state.showLS = !state.showLS;
-    this.setAttribute('aria-pressed', String(state.showLS));
-    this.textContent = state.showLS ? 'Hide least-squares solution' : 'Show least-squares solution';
+  document.getElementById('btn-newsample').addEventListener('click', function () {
+    trainY = noisyY(trainX);
     redraw();
   });
-  document.getElementById('btn-outlier').addEventListener('click', function () {
-    state.outlierOn = !state.outlierOn;
-    this.setAttribute('aria-pressed', String(state.outlierOn));
-    this.textContent = state.outlierOn ? 'Remove outlier' : 'Add outlier';
+  var btnOverlay = document.getElementById('btn-overlay');
+  btnOverlay.addEventListener('click', function () {
+    state.showOverlay = !state.showOverlay;
+    this.setAttribute('aria-pressed', String(state.showOverlay));
+    this.textContent = state.showOverlay ? 'Hide 20 fits' : 'Show 20 fits';
+    redraw();
+  });
+  var btnTest = document.getElementById('btn-test');
+  btnTest.addEventListener('click', function () {
+    state.showTest = !state.showTest;
+    this.setAttribute('aria-pressed', String(state.showTest));
+    this.textContent = state.showTest ? 'Hide test points' : 'Show test points';
     redraw();
   });
   document.getElementById('btn-reset').addEventListener('click', function () {
-    state.w0 = DEFAULTS.w0; state.w1 = DEFAULTS.w1; state.showLS = false; state.outlierOn = false;
-    document.getElementById('btn-ls').textContent = 'Show least-squares solution';
-    document.getElementById('btn-ls').setAttribute('aria-pressed', 'false');
-    document.getElementById('btn-outlier').textContent = 'Add outlier';
-    document.getElementById('btn-outlier').setAttribute('aria-pressed', 'false');
+    state.degree = CONFIG.degree.default;
+    state.lambda = CONFIG.lambda.default;
+    state.showOverlay = false;
+    state.showTest = false;
+    trainY = noisyY(trainX);
+    resampleYs = makeResamples();
+    btnOverlay.textContent = 'Show 20 fits'; btnOverlay.setAttribute('aria-pressed', 'false');
+    btnTest.textContent = 'Show test points'; btnTest.setAttribute('aria-pressed', 'false');
     syncControls(); redraw();
   });
 
   // ---- init ---------------------------------------------------------------
-  bindSlider('w0'); bindSlider('w1');
+  bindDegree(); bindLambda();
   drawAxes(); redraw();
   PL.viz.onThemeChange(drawAxes);
   PL.mountQuiz(document.getElementById('quiz'), CONFIG);

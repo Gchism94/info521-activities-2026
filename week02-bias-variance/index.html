@@ -42,33 +42,34 @@
     <div class="pl-controls">
       <div class="pl-controls-row">
         <div class="pl-control">
-          <label for="rng-w0">Intercept $w_0$</label>
+          <label for="rng-degree">Polynomial degree</label>
           <div class="pl-control-inputs">
-            <input type="range" id="rng-w0" aria-label="Intercept w0">
-            <input type="number" id="num-w0" aria-label="Intercept w0 value">
+            <input type="range" id="rng-degree" aria-label="Polynomial degree">
+            <input type="number" id="num-degree" aria-label="Polynomial degree value">
           </div>
         </div>
         <div class="pl-control">
-          <label for="rng-w1">Slope $w_1$</label>
+          <label for="rng-lambda">Ridge penalty $\lambda$</label>
           <div class="pl-control-inputs">
-            <input type="range" id="rng-w1" aria-label="Slope w1">
-            <input type="number" id="num-w1" aria-label="Slope w1 value">
+            <input type="range" id="rng-lambda" aria-label="Ridge penalty lambda">
+            <input type="number" id="num-lambda" aria-label="Ridge penalty lambda value">
           </div>
         </div>
       </div>
       <div class="pl-btns">
-        <button class="pl-btn" id="btn-ls" type="button" aria-pressed="false">Show least-squares solution</button>
-        <button class="pl-btn" id="btn-outlier" type="button" aria-pressed="false">Add outlier</button>
+        <button class="pl-btn" id="btn-newsample" type="button">New sample</button>
+        <button class="pl-btn" id="btn-overlay" type="button" aria-pressed="false">Show 20 fits</button>
+        <button class="pl-btn" id="btn-test" type="button" aria-pressed="false">Show test points</button>
         <button class="pl-btn" id="btn-reset" type="button">Reset</button>
       </div>
     </div>
 
     <div class="pl-info">
       <div class="pl-info-grid">
-        <div class="pl-cell"><div class="pl-cell-label">Intercept $w_0$</div><div class="pl-cell-value" id="val-w0">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Slope $w_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Your loss (MSE)</div><div class="pl-cell-value" id="val-mse">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Least-squares MSE</div><div class="pl-cell-value" id="val-lsmse">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Degree</div><div class="pl-cell-value" id="val-degree">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Ridge $\lambda$</div><div class="pl-cell-value" id="val-lambda">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Train MSE</div><div class="pl-cell-value" id="val-trainmse">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Test MSE</div><div class="pl-cell-value" id="val-testmse">—</div></div>
       </div>
     </div>
 

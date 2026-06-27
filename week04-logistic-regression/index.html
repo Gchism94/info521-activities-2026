@@ -42,33 +42,34 @@
     <div class="pl-controls">
       <div class="pl-controls-row">
         <div class="pl-control">
-          <label for="rng-w0">Intercept $w_0$</label>
+          <label for="rng-w0">Bias $w_0$</label>
           <div class="pl-control-inputs">
-            <input type="range" id="rng-w0" aria-label="Intercept w0">
-            <input type="number" id="num-w0" aria-label="Intercept w0 value">
+            <input type="range" id="rng-w0" aria-label="Bias w0">
+            <input type="number" id="num-w0" aria-label="Bias w0 value">
           </div>
         </div>
         <div class="pl-control">
-          <label for="rng-w1">Slope $w_1$</label>
+          <label for="rng-w1">Steepness $w_1$</label>
           <div class="pl-control-inputs">
-            <input type="range" id="rng-w1" aria-label="Slope w1">
-            <input type="number" id="num-w1" aria-label="Slope w1 value">
+            <input type="range" id="rng-w1" aria-label="Steepness w1">
+            <input type="number" id="num-w1" aria-label="Steepness w1 value">
           </div>
         </div>
       </div>
       <div class="pl-btns">
-        <button class="pl-btn" id="btn-ls" type="button" aria-pressed="false">Show least-squares solution</button>
-        <button class="pl-btn" id="btn-outlier" type="button" aria-pressed="false">Add outlier</button>
+        <button class="pl-btn" id="btn-mle" type="button">Show MLE fit</button>
+        <button class="pl-btn" id="btn-generative" type="button" aria-pressed="false">Generative comparison</button>
         <button class="pl-btn" id="btn-reset" type="button">Reset</button>
       </div>
     </div>
 
     <div class="pl-info">
       <div class="pl-info-grid">
-        <div class="pl-cell"><div class="pl-cell-label">Intercept $w_0$</div><div class="pl-cell-value" id="val-w0">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Slope $w_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Your loss (MSE)</div><div class="pl-cell-value" id="val-mse">—</div></div>
-        <div class="pl-cell"><div class="pl-cell-label">Least-squares MSE</div><div class="pl-cell-value" id="val-lsmse">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Bias $w_0$</div><div class="pl-cell-value" id="val-w0">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Steepness $w_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Threshold $x^*$ (mm)</div><div class="pl-cell-value" id="val-xstar">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Log loss $\mathcal{L}$</div><div class="pl-cell-value" id="val-loss">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Accuracy</div><div class="pl-cell-value" id="val-acc">—</div></div>
       </div>
     </div>
 

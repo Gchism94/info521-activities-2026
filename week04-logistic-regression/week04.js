@@ -1,5 +1,5 @@
 /* ============================================================================
-   Week 1 — The Linear Model (least-squares explorer + mastery quiz).
+   Week 4 — Logistic Regression (1-D classifier explorer + mastery quiz).
    A "thin" week module: dataset + drawViz + quiz bank. Everything reusable
    lives in ../shared/. Only CONFIG changes between weeks.
    ========================================================================== */
@@ -106,26 +106,80 @@
     ]
   };
 
-  // ---- math helpers -------------------------------------------------------
-  function lsq(pts) {
-    var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0, i, x, y;
-    for (i = 0; i < n; i++) { x = pts[i][0]; y = pts[i][1]; sx += x; sy += y; sxx += x * x; sxy += x * y; }
-    var xbar = sx / n, ybar = sy / n, denom = sxx - n * xbar * xbar;
-    var w1 = denom !== 0 ? (sxy - n * xbar * ybar) / denom : 0;
-    return { w0: ybar - w1 * xbar, w1: w1 };
-  }
-  function mse(pts, w0, w1) {
-    var s = 0, i, r;
-    for (i = 0; i < pts.length; i++) { r = pts[i][1] - (w0 + w1 * pts[i][0]); s += r * r; }
-    return s / pts.length;
-  }
+  // ---- numerics ----------------------------------------------------------
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function sigmoid(z) {                         // numerically stable
+    if (z >= 0) { var e = Math.exp(-z); return 1 / (1 + e); }
+    var ez = Math.exp(z); return ez / (1 + ez);
+  }
+  var EPS = 1e-7;
+  function clampP(p) { return Math.min(1 - EPS, Math.max(EPS, p)); }
+
+  // ---- data ---------------------------------------------------------------
+  var X = CONFIG.data.map(function (d) { return d[0]; });
+  var Y = CONFIG.data.map(function (d) { return d[1]; });
+  var N = CONFIG.data.length;
+  // deterministic vertical jitter per point (stable across redraws)
+  function hash01(i) { var s = Math.sin((i + 1) * 12.9898) * 43758.5453; return s - Math.floor(s); }
+  var JIT = CONFIG.data.map(function (d, i) { return (hash01(i) - 0.5) * 0.06; });
+
+  // ---- model --------------------------------------------------------------
+  function pAt(w0, w1, xv) { return sigmoid(w0 + w1 * xv); }
+  function logLoss(w0, w1) {
+    var s = 0, i, p;
+    for (i = 0; i < N; i++) { p = clampP(pAt(w0, w1, X[i])); s += -(Y[i] * Math.log(p) + (1 - Y[i]) * Math.log(1 - p)); }
+    return s / N;
+  }
+  function accuracy(w0, w1) {
+    var c = 0, i;
+    for (i = 0; i < N; i++) { if ((pAt(w0, w1, X[i]) >= 0.5 ? 1 : 0) === Y[i]) c++; }
+    return c / N;
+  }
+  function predicted(w0, w1, xv) { return pAt(w0, w1, xv) >= 0.5 ? 1 : 0; }
+
+  // Logistic-regression MLE via Newton-Raphson / IRLS (2 params). x is
+  // standardized inside the solver so the Hessian stays well-conditioned, then
+  // the coefficients are converted back to raw-x at the end.
+  function fitMLE() {
+    var mu = 0, i; for (i = 0; i < N; i++) mu += X[i]; mu /= N;
+    var sd = 0; for (i = 0; i < N; i++) sd += (X[i] - mu) * (X[i] - mu); sd = Math.sqrt(sd / N) || 1;
+    var xs = X.map(function (xv) { return (xv - mu) / sd; });
+    var b0 = 0, b1 = 0, iter, ridge = 1e-6;
+    for (iter = 0; iter < 25; iter++) {
+      var g0 = 0, g1 = 0, h00 = 0, h01 = 0, h11 = 0;
+      for (i = 0; i < N; i++) {
+        var z = b0 + b1 * xs[i], p = sigmoid(z), w = p * (1 - p), r = p - Y[i];
+        g0 += r; g1 += r * xs[i];
+        h00 += w; h01 += w * xs[i]; h11 += w * xs[i] * xs[i];
+      }
+      h00 += ridge; h11 += ridge;                 // tiny ridge for stability
+      var det = h00 * h11 - h01 * h01;
+      if (Math.abs(det) < 1e-12) break;
+      var d0 = (h11 * g0 - h01 * g1) / det;
+      var d1 = (-h01 * g0 + h00 * g1) / det;
+      b0 -= d0; b1 -= d1;
+      if (Math.abs(d0) + Math.abs(d1) < 1e-9) break;
+    }
+    return { w0: b0 - b1 * mu / sd, w1: b1 / sd };
+  }
+
+  // Generative: per-class Gaussian with a shared pooled variance + class priors.
+  // Shared variance => the posterior is logistic and the boundary is linear.
+  function fitGenerative() {
+    var n0 = 0, n1 = 0, s0 = 0, s1 = 0, i;
+    for (i = 0; i < N; i++) { if (Y[i] === 0) { n0++; s0 += X[i]; } else { n1++; s1 += X[i]; } }
+    var mu0 = s0 / n0, mu1 = s1 / n1, ss = 0;
+    for (i = 0; i < N; i++) { var m = Y[i] === 0 ? mu0 : mu1; ss += (X[i] - m) * (X[i] - m); }
+    var varp = ss / (N - 2), pi0 = n0 / N, pi1 = n1 / N;
+    var boundary = (mu0 + mu1) / 2 + varp / (mu1 - mu0) * Math.log(pi0 / pi1);
+    return { mu0: mu0, mu1: mu1, varp: varp, boundary: boundary };
+  }
+  function gaussPDF(xv, mu, varp) { return Math.exp(-(xv - mu) * (xv - mu) / (2 * varp)) / Math.sqrt(2 * Math.PI * varp); }
 
   // ---- state --------------------------------------------------------------
-  var DEFAULTS = { w0: 95, w1: 0.4 };
-  var SLIDER = { w0: { min: 60, max: 140, step: 0.5 }, w1: { min: -0.5, max: 2.5, step: 0.01 } };
-  var state = { w0: DEFAULTS.w0, w1: DEFAULTS.w1, showLS: false, outlierOn: false };
-  function pts() { return state.outlierOn ? CONFIG.data.concat([CONFIG.outlier]) : CONFIG.data; }
+  var DEFAULTS = { w0: CONFIG.w0.default, w1: CONFIG.w1.default };
+  var SLIDER = { w0: CONFIG.w0, w1: CONFIG.w1 };
+  var state = { w0: DEFAULTS.w0, w1: DEFAULTS.w1, showGen: false };
 
   // ---- chart scaffold -----------------------------------------------------
   var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 54 };
@@ -134,12 +188,16 @@
     .attr('viewBox', '0 0 ' + W + ' ' + H)
     .attr('width', '100%')
     .attr('role', 'img')
-    .attr('aria-label', 'Scatter of ' + CONFIG.yLabel + ' versus ' + CONFIG.xLabel +
-      ', with a fit line you can drag or adjust with sliders.');
+    .attr('aria-label', 'Logistic regression of ' + CONFIG.yLabel + ' versus ' + CONFIG.xLabel +
+      ', with an adjustable sigmoid curve and decision boundary.');
   var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-  var x = d3.scaleLinear().domain([22, 78]).range([0, iw]);
-  var y = d3.scaleLinear().domain([100, 175]).range([ih, 0]);
-  var diamond = d3.symbol().type(d3.symbolDiamond).size(120);
+  var xExt = d3.extent(X);
+  var x = d3.scaleLinear().domain([xExt[0] - 4, xExt[1] + 4]).range([0, iw]);
+  var y = d3.scaleLinear().domain([-0.08, 1.08]).range([ih, 0]);
+
+  var clipId = 'clip-' + CONFIG.unitId;
+  svg.append('defs').append('clipPath').attr('id', clipId)
+    .append('rect').attr('width', iw).attr('height', ih);
 
   var gx = g.append('g').attr('transform', 'translate(0,' + ih + ')');
   var gy = g.append('g');
@@ -148,88 +206,83 @@
   g.append('text').attr('class', 'pl-axis-label').attr('transform', 'rotate(-90)')
     .attr('x', -ih / 2).attr('y', -40).attr('text-anchor', 'middle').text(CONFIG.yLabel);
 
-  var gResid = g.append('g');
-  var gDots = g.append('g');
-  var lsLine = g.append('line').attr('class', 'pl-ls-line').style('display', 'none');
-  var fitLine = g.append('line').attr('class', 'pl-fit-line');
-  var gHandles = g.append('g');
+  var shadeRect = g.append('rect').attr('y', 0).attr('height', ih)
+    .attr('fill', ok.vermillion).attr('fill-opacity', 0.06);
+  var gDensity = g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+  var dens0 = gDensity.append('path'), dens1 = gDensity.append('path');
+  var genLine = g.append('line').style('display', 'none');
+  var curve = g.append('path').attr('clip-path', 'url(#' + clipId + ')');
+  var boundary = g.append('line');
+  var gPoints = g.append('g');
+
+  var line = d3.line().x(function (d) { return x(d[0]); }).y(function (d) { return y(d[1]); });
+  var dom = x.domain(), dense = d3.range(dom[0], dom[1] + 0.001, (dom[1] - dom[0]) / 200);
 
   function drawAxes() {
-    gx.call(d3.axisBottom(x).ticks(7));
-    gy.call(d3.axisLeft(y).ticks(6));
+    gx.call(d3.axisBottom(x).ticks(8));
+    gy.call(d3.axisLeft(y).tickValues([0, 0.25, 0.5, 0.75, 1]));
     [gx, gy].forEach(function (ax) {
       ax.selectAll('path, line').attr('stroke', PL.viz.gridColor());
       ax.selectAll('text').attr('fill', PL.viz.textColor());
     });
   }
-
   function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
 
+  // ---- draw ---------------------------------------------------------------
   function redraw() {
-    var P = pts(), xd = x.domain();
+    var w0 = state.w0, w1 = state.w1, xstar = w1 !== 0 ? -w0 / w1 : NaN;
 
-    var rs = gResid.selectAll('line').data(P);
-    rs.enter().append('line').attr('class', 'pl-resid').merge(rs)
-      .attr('x1', function (d) { return x(d[0]); })
-      .attr('x2', function (d) { return x(d[0]); })
-      .attr('y1', function (d) { return y(d[1]); })
-      .attr('y2', function (d) { return y(state.w0 + state.w1 * d[0]); });
-    rs.exit().remove();
+    // sigmoid curve
+    curve.attr('d', line(dense.map(function (xv) { return [xv, pAt(w0, w1, xv)]; })))
+      .attr('fill', 'none').attr('stroke', ok.purple).attr('stroke-width', 2.5);
 
-    var ds = gDots.selectAll('circle').data(CONFIG.data);
-    ds.enter().append('circle').attr('class', 'pl-dot').attr('r', 5).merge(ds)
-      .attr('cx', function (d) { return x(d[0]); })
-      .attr('cy', function (d) { return y(d[1]); });
-    ds.exit().remove();
+    // decision boundary + shaded "predict malignant" region (x > x*)
+    if (isFinite(xstar)) {
+      var bx = clamp(xstar, dom[0], dom[1]);
+      boundary.style('display', null)
+        .attr('x1', x(bx)).attr('x2', x(bx)).attr('y1', 0).attr('y2', ih)
+        .attr('stroke', PL.viz.textColor()).attr('stroke-width', 1.5).attr('stroke-dasharray', '2 3');
+      shadeRect.style('display', null).attr('x', x(bx)).attr('width', Math.max(0, iw - x(bx)));
+    } else { boundary.style('display', 'none'); shadeRect.style('display', 'none'); }
 
-    var ol = gDots.selectAll('path.pl-outlier').data(state.outlierOn ? [CONFIG.outlier] : []);
-    ol.enter().append('path').attr('class', 'pl-outlier').attr('d', diamond).merge(ol)
-      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });
-    ol.exit().remove();
-
-    fitLine
-      .attr('x1', x(xd[0])).attr('y1', y(state.w0 + state.w1 * xd[0]))
-      .attr('x2', x(xd[1])).attr('y2', y(state.w0 + state.w1 * xd[1]));
-
-    var hs = [
-      { x: xd[0], y: state.w0 + state.w1 * xd[0], i: 0 },
-      { x: xd[1], y: state.w0 + state.w1 * xd[1], i: 1 }
-    ];
-    var hh = gHandles.selectAll('circle').data(hs);
-    hh.enter().append('circle').attr('class', 'pl-handle').attr('r', 8)
-      .attr('tabindex', 0).attr('role', 'slider').attr('aria-label', 'Drag to tilt the fit line')
-      .call(d3.drag().on('drag', onDrag))
-      .merge(hh)
-      .attr('cx', function (d) { return x(d.x); })
-      .attr('cy', function (d) { return y(d.y); })
-      .each(function (d) { this.__i = d.i; });
-
-    var ls = lsq(P);
-    if (state.showLS) {
-      lsLine.style('display', null)
-        .attr('x1', x(xd[0])).attr('y1', y(ls.w0 + ls.w1 * xd[0]))
-        .attr('x2', x(xd[1])).attr('y2', y(ls.w0 + ls.w1 * xd[1]));
+    // generative overlay: two scaled class-conditional densities + its boundary
+    if (state.showGen) {
+      var gen = fitGenerative();
+      var k = 0.42 / gaussPDF(gen.mu0, gen.mu0, gen.varp);   // shared variance => equal peaks
+      dens0.style('display', null)
+        .attr('d', line(dense.map(function (xv) { return [xv, k * gaussPDF(xv, gen.mu0, gen.varp)]; })))
+        .attr('fill', 'none').attr('stroke', ok.sky).attr('stroke-width', 1.8).attr('stroke-dasharray', '5 4');
+      dens1.style('display', null)
+        .attr('d', line(dense.map(function (xv) { return [xv, k * gaussPDF(xv, gen.mu1, gen.varp)]; })))
+        .attr('fill', 'none').attr('stroke', ok.orange).attr('stroke-width', 1.8).attr('stroke-dasharray', '5 4');
+      var gbx = clamp(gen.boundary, dom[0], dom[1]);
+      genLine.style('display', null)
+        .attr('x1', x(gbx)).attr('x2', x(gbx)).attr('y1', 0).attr('y2', ih)
+        .attr('stroke', ok.green).attr('stroke-width', 2).attr('stroke-dasharray', '6 4');
     } else {
-      lsLine.style('display', 'none');
+      dens0.style('display', 'none'); dens1.style('display', 'none'); genLine.style('display', 'none');
     }
 
-    setText('val-w0', state.w0.toFixed(2));
-    setText('val-w1', state.w1.toFixed(3));
-    setText('val-mse', mse(P, state.w0, state.w1).toFixed(2));
-    setText('val-lsmse', mse(P, ls.w0, ls.w1).toFixed(2));
-  }
+    // patient points: color + y-position both encode class; ring = misclassified
+    var pts = CONFIG.data.map(function (d, i) {
+      return { x: d[0], cls: d[1], yj: d[1] + JIT[i], mis: predicted(w0, w1, d[0]) !== d[1] };
+    });
+    var sel = gPoints.selectAll('circle').data(pts);
+    sel.enter().append('circle').attr('r', 6).merge(sel)
+      .attr('cx', function (d) { return x(d.x); })
+      .attr('cy', function (d) { return y(d.yj); })
+      .attr('fill', function (d) { return d.cls === 1 ? ok.vermillion : ok.blue; })
+      .attr('fill-opacity', 0.9)
+      .attr('stroke', function (d) { return d.mis ? PL.viz.textColor() : 'none'; })
+      .attr('stroke-width', function (d) { return d.mis ? 2.5 : 0; });
+    sel.exit().remove();
 
-  function onDrag(event) {
-    var i = this.__i, xd = x.domain();
-    var newY = y.invert(event.y);
-    var yL = (i === 0) ? newY : (state.w0 + state.w1 * xd[0]);
-    var yR = (i === 1) ? newY : (state.w0 + state.w1 * xd[1]);
-    var w1 = (yR - yL) / (xd[1] - xd[0]);
-    var w0 = yL - w1 * xd[0];
-    state.w1 = clamp(w1, SLIDER.w1.min, SLIDER.w1.max);
-    state.w0 = clamp(w0, SLIDER.w0.min, SLIDER.w0.max);
-    syncControls();
-    redraw();
+    // readouts
+    setText('val-w0', w0.toFixed(1));
+    setText('val-w1', w1.toFixed(2));
+    setText('val-xstar', isFinite(xstar) ? xstar.toFixed(1) : '—');
+    setText('val-loss', logLoss(w0, w1).toFixed(3));
+    setText('val-acc', Math.round(accuracy(w0, w1) * 100) + '%');
   }
 
   // ---- controls -----------------------------------------------------------
@@ -245,38 +298,35 @@
     });
   }
   function syncControls() {
-    ['w0', 'w1'].forEach(function (n) {
-      var r = document.getElementById('rng-' + n), m = document.getElementById('num-' + n);
-      if (r) r.value = state[n];
-      if (m) m.value = (n === 'w1' ? state[n].toFixed(3) : state[n].toFixed(2));
-    });
+    var r0 = document.getElementById('rng-w0'), m0 = document.getElementById('num-w0');
+    if (r0) r0.value = state.w0; if (m0) m0.value = state.w0.toFixed(1);
+    var r1 = document.getElementById('rng-w1'), m1 = document.getElementById('num-w1');
+    if (r1) r1.value = state.w1; if (m1) m1.value = state.w1.toFixed(2);
   }
 
-  document.getElementById('btn-ls').addEventListener('click', function () {
-    state.showLS = !state.showLS;
-    this.setAttribute('aria-pressed', String(state.showLS));
-    this.textContent = state.showLS ? 'Hide least-squares solution' : 'Show least-squares solution';
-    redraw();
+  document.getElementById('btn-mle').addEventListener('click', function () {
+    var fit = fitMLE();
+    state.w0 = clamp(fit.w0, SLIDER.w0.min, SLIDER.w0.max);
+    state.w1 = clamp(fit.w1, SLIDER.w1.min, SLIDER.w1.max);
+    syncControls(); redraw();
   });
-  document.getElementById('btn-outlier').addEventListener('click', function () {
-    state.outlierOn = !state.outlierOn;
-    this.setAttribute('aria-pressed', String(state.outlierOn));
-    this.textContent = state.outlierOn ? 'Remove outlier' : 'Add outlier';
+  document.getElementById('btn-generative').addEventListener('click', function () {
+    state.showGen = !state.showGen;
+    this.setAttribute('aria-pressed', String(state.showGen));
+    this.textContent = state.showGen ? 'Hide generative comparison' : 'Generative comparison';
     redraw();
   });
   document.getElementById('btn-reset').addEventListener('click', function () {
-    state.w0 = DEFAULTS.w0; state.w1 = DEFAULTS.w1; state.showLS = false; state.outlierOn = false;
-    document.getElementById('btn-ls').textContent = 'Show least-squares solution';
-    document.getElementById('btn-ls').setAttribute('aria-pressed', 'false');
-    document.getElementById('btn-outlier').textContent = 'Add outlier';
-    document.getElementById('btn-outlier').setAttribute('aria-pressed', 'false');
+    state.w0 = DEFAULTS.w0; state.w1 = DEFAULTS.w1; state.showGen = false;
+    document.getElementById('btn-generative').textContent = 'Generative comparison';
+    document.getElementById('btn-generative').setAttribute('aria-pressed', 'false');
     syncControls(); redraw();
   });
 
   // ---- init ---------------------------------------------------------------
   bindSlider('w0'); bindSlider('w1');
   drawAxes(); redraw();
-  PL.viz.onThemeChange(drawAxes);
+  PL.viz.onThemeChange(function () { drawAxes(); redraw(); });
   PL.mountQuiz(document.getElementById('quiz'), CONFIG);
 
   window.addEventListener('load', function () {

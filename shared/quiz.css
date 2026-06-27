@@ -1,0 +1,78 @@
+/* ============================================================================
+   Peer-Loops quiz styles — host-agnostic drop-in.
+   Used when wrapping an existing standalone demo that has its own page styling
+   (e.g. Week 3). Self-contained: defines the --pl-* variables it needs, scopes
+   everything to .pl-quiz / .pl-btn, and never styles body, .container, or bare
+   elements of the host page.
+   ========================================================================== */
+:root {
+  --pl-card: #ffffff;
+  --pl-panel: #f8f7f4;
+  --pl-text: #2c2c2a;
+  --pl-muted: #5f5e5a;
+  --pl-muted-2: #888780;
+  --pl-border: #d3d1c7;
+  --pl-accent: #534ab7;
+  --pl-accent-2: #4840a0;
+  --pl-good-bg: #d6f0e0;
+  --pl-good-fg: #1a6b3a;
+  --pl-bad-bg: #fbe3de;
+  --pl-bad-fg: #8a2b18;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pl-card: #2c2c2a;
+    --pl-panel: #333330;
+    --pl-text: #e5e5e5;
+    --pl-muted: #b4b2a9;
+    --pl-muted-2: #888780;
+    --pl-border: #5f5e5a;
+    --pl-accent: #afa9ec;
+    --pl-accent-2: #c4bff5;
+    --pl-good-bg: #1a3a28; --pl-good-fg: #7de0a8;
+    --pl-bad-bg: #3a1f18;  --pl-bad-fg: #f0a48c;
+  }
+}
+
+/* buttons — scoped to .pl-btn; flex reset guards against host bare-button rules */
+.pl-btn {
+  flex: 0 0 auto;
+  padding: 9px 16px; font-size: 14px; border: 1px solid var(--pl-border);
+  border-radius: 8px; background: var(--pl-card); color: var(--pl-text);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.pl-btn:hover { background: var(--pl-panel); border-color: var(--pl-muted-2); }
+.pl-btn:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+.pl-btn-primary { background: var(--pl-accent); color: #fff; border-color: var(--pl-accent); font-weight: 500; }
+.pl-btn-primary:hover { background: var(--pl-accent-2); border-color: var(--pl-accent-2); }
+.pl-btn-small { padding: 5px 12px; font-size: 13px; }
+
+/* quiz */
+.pl-quiz { border-top: 1px solid var(--pl-border); margin-top: 1.5rem; padding-top: 1.5rem; color: var(--pl-text); }
+.pl-quiz-header h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.3rem; }
+.pl-quiz-status { font-size: 0.85rem; color: var(--pl-muted); margin-bottom: 1.25rem; }
+.pl-q { border: 0; padding: 0; min-width: 0; margin-bottom: 1.5rem; }
+.pl-q-stem { font-weight: 500; margin-bottom: 0.6rem; }
+.pl-opt { display: block; position: relative; border: 1px solid var(--pl-border); border-radius: 8px; padding: 10px 12px 10px 38px; margin-bottom: 8px; cursor: pointer; }
+.pl-opt:hover { background: var(--pl-panel); }
+.pl-opt input { position: absolute; left: 12px; top: 13px; accent-color: var(--pl-accent); }
+.pl-opt-text { display: block; }
+.pl-opt-feedback { display: none; font-size: 0.85rem; color: var(--pl-muted); margin-top: 6px; }
+.pl-opt.is-correct { border-color: var(--pl-good-fg); background: var(--pl-good-bg); }
+.pl-opt.is-wrong { border-color: var(--pl-bad-fg); background: var(--pl-bad-bg); }
+.pl-opt.is-correct::after { content: "\2713 correct"; }
+.pl-opt.is-wrong.is-picked::after { content: "\2717 your choice"; }
+.pl-opt.is-correct::after, .pl-opt.is-wrong.is-picked::after {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  display: inline-block; margin-top: 4px; color: var(--pl-muted);
+}
+.pl-quiz-actions { margin: 1rem 0; }
+.pl-score { font-weight: 600; margin-bottom: 0.5rem; }
+.pl-quiz-hint { font-size: 0.9rem; color: var(--pl-muted); }
+.pl-receipt { background: var(--pl-good-bg); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 0.5rem; }
+.pl-receipt-label { font-size: 0.85rem; color: var(--pl-good-fg); font-weight: 600; margin-bottom: 0.5rem; }
+.pl-receipt-code {
+  display: block; background: var(--pl-card); border-radius: 6px; padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem;
+  margin-bottom: 0.5rem; word-break: break-word;
+}

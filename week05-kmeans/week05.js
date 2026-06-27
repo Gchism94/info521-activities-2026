@@ -1,5 +1,5 @@
 /* ============================================================================
-   Week 1 — The Linear Model (least-squares explorer + mastery quiz).
+   Week 5 — K-Means Clustering (assign/update explorer + mastery quiz).
    A "thin" week module: dataset + drawViz + quiz bank. Everything reusable
    lives in ../shared/. Only CONFIG changes between weeks.
    ========================================================================== */
@@ -105,53 +105,50 @@
     ]
   };
 
-  // ---- math helpers -------------------------------------------------------
-  function lsq(pts) {
-    var n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0, i, x, y;
-    for (i = 0; i < n; i++) { x = pts[i][0]; y = pts[i][1]; sx += x; sy += y; sxx += x * x; sxy += x * y; }
-    var xbar = sx / n, ybar = sy / n, denom = sxx - n * xbar * xbar;
-    var w1 = denom !== 0 ? (sxy - n * xbar * ybar) / denom : 0;
-    return { w0: ybar - w1 * xbar, w1: w1 };
-  }
-  function mse(pts, w0, w1) {
-    var s = 0, i, r;
-    for (i = 0; i < pts.length; i++) { r = pts[i][1] - (w0 + w1 * pts[i][0]); s += r * r; }
-    return s / pts.length;
-  }
+  // ---- setup --------------------------------------------------------------
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  var COLORS = [ok.blue, ok.vermillion, ok.green, ok.orange, ok.purple];
+  var SHAPES = [d3.symbolCircle, d3.symbolTriangle, d3.symbolSquare, d3.symbolCross, d3.symbolStar];
+  var NEUTRAL = '#9a988f';
+  var DATA = CONFIG.data, N = DATA.length;
 
-  // ---- state --------------------------------------------------------------
-  var DEFAULTS = { w0: 95, w1: 0.4 };
-  var SLIDER = { w0: { min: 60, max: 140, step: 0.5 }, w1: { min: -0.5, max: 2.5, step: 0.01 } };
-  var state = { w0: DEFAULTS.w0, w1: DEFAULTS.w1, showLS: false, outlierOn: false };
-  function pts() { return state.outlierOn ? CONFIG.data.concat([CONFIG.outlier]) : CONFIG.data; }
+  var state = {
+    k: CONFIG.k.default,
+    centroids: [],     // [bmi, glucose] in data coords
+    labels: null,      // array length N, or null before first assignment
+    iteration: 0,
+    converged: false,
+    phase: 'assign',   // next phase the Step button will run
+    assigned: false
+  };
 
   // ---- chart scaffold -----------------------------------------------------
-  var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 54 };
+  var W = 660, H = 410, margin = { top: 14, right: 16, bottom: 46, left: 56 };
   var iw = W - margin.left - margin.right, ih = H - margin.top - margin.bottom;
   var svg = d3.select('#chart').append('svg')
     .attr('viewBox', '0 0 ' + W + ' ' + H)
     .attr('width', '100%')
     .attr('role', 'img')
-    .attr('aria-label', 'Scatter of ' + CONFIG.yLabel + ' versus ' + CONFIG.xLabel +
-      ', with a fit line you can drag or adjust with sliders.');
+    .attr('aria-label', 'k-means clustering of patients by ' + CONFIG.xLabel + ' and ' + CONFIG.yLabel +
+      ', with draggable centroids.');
   var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-  var x = d3.scaleLinear().domain([22, 78]).range([0, iw]);
-  var y = d3.scaleLinear().domain([100, 175]).range([ih, 0]);
-  var diamond = d3.symbol().type(d3.symbolDiamond).size(120);
+  var x = d3.scaleLinear().domain([18, 42]).range([0, iw]);
+  var y = d3.scaleLinear().domain([75, 185]).range([ih, 0]);
+
+  var clipId = 'clip-' + CONFIG.unitId;
+  svg.append('defs').append('clipPath').attr('id', clipId)
+    .append('rect').attr('width', iw).attr('height', ih);
 
   var gx = g.append('g').attr('transform', 'translate(0,' + ih + ')');
   var gy = g.append('g');
   g.append('text').attr('class', 'pl-axis-label').attr('x', iw / 2).attr('y', ih + 38)
     .attr('text-anchor', 'middle').text(CONFIG.xLabel);
   g.append('text').attr('class', 'pl-axis-label').attr('transform', 'rotate(-90)')
-    .attr('x', -ih / 2).attr('y', -40).attr('text-anchor', 'middle').text(CONFIG.yLabel);
+    .attr('x', -ih / 2).attr('y', -46).attr('text-anchor', 'middle').text(CONFIG.yLabel);
 
-  var gResid = g.append('g');
-  var gDots = g.append('g');
-  var lsLine = g.append('line').attr('class', 'pl-ls-line').style('display', 'none');
-  var fitLine = g.append('line').attr('class', 'pl-fit-line');
-  var gHandles = g.append('g');
+  var gRegions = g.append('g').attr('clip-path', 'url(#' + clipId + ')');
+  var gPoints = g.append('g');
+  var gCentroids = g.append('g');
 
   function drawAxes() {
     gx.call(d3.axisBottom(x).ticks(7));
@@ -161,121 +158,158 @@
       ax.selectAll('text').attr('fill', PL.viz.textColor());
     });
   }
-
   function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
 
-  function redraw() {
-    var P = pts(), xd = x.domain();
-
-    var rs = gResid.selectAll('line').data(P);
-    rs.enter().append('line').attr('class', 'pl-resid').merge(rs)
-      .attr('x1', function (d) { return x(d[0]); })
-      .attr('x2', function (d) { return x(d[0]); })
-      .attr('y1', function (d) { return y(d[1]); })
-      .attr('y2', function (d) { return y(state.w0 + state.w1 * d[0]); });
-    rs.exit().remove();
-
-    var ds = gDots.selectAll('circle').data(CONFIG.data);
-    ds.enter().append('circle').attr('class', 'pl-dot').attr('r', 5).merge(ds)
-      .attr('cx', function (d) { return x(d[0]); })
-      .attr('cy', function (d) { return y(d[1]); });
-    ds.exit().remove();
-
-    var ol = gDots.selectAll('path.pl-outlier').data(state.outlierOn ? [CONFIG.outlier] : []);
-    ol.enter().append('path').attr('class', 'pl-outlier').attr('d', diamond).merge(ol)
-      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });
-    ol.exit().remove();
-
-    fitLine
-      .attr('x1', x(xd[0])).attr('y1', y(state.w0 + state.w1 * xd[0]))
-      .attr('x2', x(xd[1])).attr('y2', y(state.w0 + state.w1 * xd[1]));
-
-    var hs = [
-      { x: xd[0], y: state.w0 + state.w1 * xd[0], i: 0 },
-      { x: xd[1], y: state.w0 + state.w1 * xd[1], i: 1 }
-    ];
-    var hh = gHandles.selectAll('circle').data(hs);
-    hh.enter().append('circle').attr('class', 'pl-handle').attr('r', 8)
-      .attr('tabindex', 0).attr('role', 'slider').attr('aria-label', 'Drag to tilt the fit line')
-      .call(d3.drag().on('drag', onDrag))
-      .merge(hh)
-      .attr('cx', function (d) { return x(d.x); })
-      .attr('cy', function (d) { return y(d.y); })
-      .each(function (d) { this.__i = d.i; });
-
-    var ls = lsq(P);
-    if (state.showLS) {
-      lsLine.style('display', null)
-        .attr('x1', x(xd[0])).attr('y1', y(ls.w0 + ls.w1 * xd[0]))
-        .attr('x2', x(xd[1])).attr('y2', y(ls.w0 + ls.w1 * xd[1]));
-    } else {
-      lsLine.style('display', 'none');
+  // ---- k-means core -------------------------------------------------------
+  // Distances are computed in on-screen units (pixels / 100) so glucose's large
+  // numeric range cannot dominate BMI -- the honest "standardize by plotting".
+  function ux(d) { return x(d[0]) / 100; }
+  function uy(d) { return y(d[1]) / 100; }
+  function dist2(d, c) { var dx = ux(d) - ux(c), dy = uy(d) - uy(c); return dx * dx + dy * dy; }
+  function randomPoints(m) {
+    return d3.shuffle(d3.range(N)).slice(0, m).map(function (i) { return [DATA[i][0], DATA[i][1]]; });
+  }
+  function assign() {
+    return DATA.map(function (d) {
+      var best = 0, bd = Infinity, kk;
+      for (kk = 0; kk < state.centroids.length; kk++) {
+        var dd = dist2(d, state.centroids[kk]);
+        if (dd < bd) { bd = dd; best = kk; }
+      }
+      return best;
+    });
+  }
+  function recompute(labels) {
+    var k = state.centroids.length, sums = [], cnts = [], i, kk;
+    for (kk = 0; kk < k; kk++) { sums[kk] = [0, 0]; cnts[kk] = 0; }
+    for (i = 0; i < N; i++) { var c = labels[i]; sums[c][0] += DATA[i][0]; sums[c][1] += DATA[i][1]; cnts[c]++; }
+    var out = [];
+    for (kk = 0; kk < k; kk++) {
+      if (cnts[kk] === 0) { out[kk] = randomPoints(1)[0]; }        // empty cluster -> re-seed
+      else { out[kk] = [sums[kk][0] / cnts[kk], sums[kk][1] / cnts[kk]]; }
     }
-
-    setText('val-w0', state.w0.toFixed(2));
-    setText('val-w1', state.w1.toFixed(3));
-    setText('val-mse', mse(P, state.w0, state.w1).toFixed(2));
-    setText('val-lsmse', mse(P, ls.w0, ls.w1).toFixed(2));
+    return out;
+  }
+  function distortion() {
+    if (!state.labels) return 0;
+    var s = 0, i;
+    for (i = 0; i < N; i++) s += dist2(DATA[i], state.centroids[state.labels[i]]);
+    return s;
+  }
+  function sameLabels(a, b) {
+    if (!a || !b) return false;
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
   }
 
-  function onDrag(event) {
-    var i = this.__i, xd = x.domain();
-    var newY = y.invert(event.y);
-    var yL = (i === 0) ? newY : (state.w0 + state.w1 * xd[0]);
-    var yR = (i === 1) ? newY : (state.w0 + state.w1 * xd[1]);
-    var w1 = (yR - yL) / (xd[1] - xd[0]);
-    var w0 = yL - w1 * xd[0];
-    state.w1 = clamp(w1, SLIDER.w1.min, SLIDER.w1.max);
-    state.w0 = clamp(w0, SLIDER.w0.min, SLIDER.w0.max);
-    syncControls();
-    redraw();
+  function initCentroids() {
+    state.centroids = randomPoints(state.k);
+    state.labels = null; state.iteration = 0; state.converged = false;
+    state.phase = 'assign'; state.assigned = false;
+  }
+  function doAssign() {
+    var nl = assign();
+    if (state.iteration >= 1 && sameLabels(nl, state.labels)) state.converged = true;
+    state.labels = nl; state.assigned = true; state.phase = 'update';
+  }
+  function doUpdate() {
+    state.centroids = recompute(state.labels);
+    state.iteration++; state.phase = 'assign';
+  }
+  function runToConvergence() {
+    if (!state.assigned) doAssign();
+    var guard = 0;
+    while (!state.converged && guard < 50) { doUpdate(); doAssign(); guard++; }
+  }
+
+  // ---- draw ---------------------------------------------------------------
+  function redraw() {
+    var k = state.centroids.length;
+
+    // nearest-centroid regions (shown once points are assigned)
+    gRegions.selectAll('*').remove();
+    if (state.assigned && k >= 1) {
+      var cpx = state.centroids.map(function (c) { return [x(c[0]), y(c[1])]; });
+      var vor = d3.Delaunay.from(cpx).voronoi([0, 0, iw, ih]);
+      cpx.forEach(function (_, i) {
+        gRegions.append('path').attr('d', vor.renderCell(i))
+          .attr('fill', COLORS[i % COLORS.length]).attr('fill-opacity', 0.07).attr('stroke', 'none');
+      });
+    }
+
+    // points: shape + color encode cluster (both, not color alone); gray before assignment
+    var sel = gPoints.selectAll('path').data(DATA);
+    sel.enter().append('path').merge(sel)
+      .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; })
+      .attr('d', function (d, i) {
+        var t = state.labels ? SHAPES[state.labels[i] % SHAPES.length] : d3.symbolCircle;
+        return d3.symbol().type(t).size(90)();
+      })
+      .attr('fill', function (d, i) { return state.labels ? COLORS[state.labels[i] % COLORS.length] : NEUTRAL; })
+      .attr('fill-opacity', 0.92)
+      .attr('stroke', PL.viz.cssVar('--pl-card', '#fff')).attr('stroke-width', 1);
+    sel.exit().remove();
+
+    // centroids: large outlined diamonds (shape cue), draggable
+    var diamond = d3.symbol().type(d3.symbolDiamond).size(380)();
+    var cs = gCentroids.selectAll('path').data(state.centroids);
+    cs.enter().append('path')
+      .attr('cursor', 'grab').attr('tabindex', 0).attr('role', 'button')
+      .call(d3.drag().on('start', function () { state.converged = false; })
+        .on('drag', function (event) {
+          var c = d3.select(this).datum();
+          c[0] = clamp(x.invert(event.x), x.domain()[0], x.domain()[1]);
+          c[1] = clamp(y.invert(event.y), y.domain()[0], y.domain()[1]);
+          state.converged = false; redraw();
+        }))
+      .merge(cs)
+      .attr('d', diamond)
+      .attr('transform', function (c) { return 'translate(' + x(c[0]) + ',' + y(c[1]) + ')'; })
+      .attr('fill', function (c, i) { return COLORS[i % COLORS.length]; })
+      .attr('fill-opacity', 0.85)
+      .attr('stroke', PL.viz.textColor()).attr('stroke-width', 2)
+      .attr('aria-label', function (c, i) { return 'Centroid ' + (i + 1) + ', draggable'; });
+    cs.exit().remove();
+
+    setText('val-k', String(k));
+    setText('val-iter', String(state.iteration));
+    setText('val-distortion', state.labels ? distortion().toFixed(2) : '—');
+    setText('val-converged', state.converged ? 'yes' : 'no');
+    var sb = document.getElementById('btn-step');
+    if (sb) sb.textContent = 'Step: ' + state.phase;   // label shows the NEXT phase
   }
 
   // ---- controls -----------------------------------------------------------
-  function bindSlider(name) {
-    var range = document.getElementById('rng-' + name);
-    var num = document.getElementById('num-' + name);
-    var s = SLIDER[name];
-    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state[name]; });
-    range.addEventListener('input', function () { state[name] = parseFloat(range.value); num.value = range.value; redraw(); });
-    num.addEventListener('input', function () {
-      var v = parseFloat(num.value); if (isNaN(v)) return;
-      v = clamp(v, s.min, s.max); state[name] = v; range.value = v; redraw();
-    });
+  function bindK() {
+    var range = document.getElementById('rng-k'), num = document.getElementById('num-k'), s = CONFIG.k;
+    [range, num].forEach(function (inp) { inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.value = state.k; });
+    function setK(v) {
+      v = clamp(Math.round(v), s.min, s.max); state.k = v;
+      range.value = v; num.value = v; initCentroids(); redraw();
+    }
+    range.addEventListener('input', function () { setK(parseInt(range.value, 10)); });
+    num.addEventListener('input', function () { var v = parseInt(num.value, 10); if (!isNaN(v)) setK(v); });
   }
-  function syncControls() {
-    ['w0', 'w1'].forEach(function (n) {
-      var r = document.getElementById('rng-' + n), m = document.getElementById('num-' + n);
-      if (r) r.value = state[n];
-      if (m) m.value = (n === 'w1' ? state[n].toFixed(3) : state[n].toFixed(2));
-    });
+  function syncK() {
+    var r = document.getElementById('rng-k'), n = document.getElementById('num-k');
+    if (r) r.value = state.k; if (n) n.value = state.k;
   }
 
-  document.getElementById('btn-ls').addEventListener('click', function () {
-    state.showLS = !state.showLS;
-    this.setAttribute('aria-pressed', String(state.showLS));
-    this.textContent = state.showLS ? 'Hide least-squares solution' : 'Show least-squares solution';
+  document.getElementById('btn-step').addEventListener('click', function () {
+    if (state.phase === 'assign') doAssign(); else doUpdate();
     redraw();
   });
-  document.getElementById('btn-outlier').addEventListener('click', function () {
-    state.outlierOn = !state.outlierOn;
-    this.setAttribute('aria-pressed', String(state.outlierOn));
-    this.textContent = state.outlierOn ? 'Remove outlier' : 'Add outlier';
-    redraw();
-  });
+  document.getElementById('btn-run').addEventListener('click', function () { runToConvergence(); redraw(); });
+  document.getElementById('btn-reinit').addEventListener('click', function () { initCentroids(); redraw(); });
   document.getElementById('btn-reset').addEventListener('click', function () {
-    state.w0 = DEFAULTS.w0; state.w1 = DEFAULTS.w1; state.showLS = false; state.outlierOn = false;
-    document.getElementById('btn-ls').textContent = 'Show least-squares solution';
-    document.getElementById('btn-ls').setAttribute('aria-pressed', 'false');
-    document.getElementById('btn-outlier').textContent = 'Add outlier';
-    document.getElementById('btn-outlier').setAttribute('aria-pressed', 'false');
-    syncControls(); redraw();
+    state.k = CONFIG.k.default; syncK(); initCentroids(); redraw();
   });
 
   // ---- init ---------------------------------------------------------------
-  bindSlider('w0'); bindSlider('w1');
+  bindK();
+  initCentroids();
   drawAxes(); redraw();
-  PL.viz.onThemeChange(drawAxes);
+  PL.viz.onThemeChange(function () { drawAxes(); redraw(); });
   PL.mountQuiz(document.getElementById('quiz'), CONFIG);
 
   window.addEventListener('load', function () {

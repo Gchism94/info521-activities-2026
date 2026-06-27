@@ -63,7 +63,7 @@
         { text: 'removes the irreducible error', correct: false, feedback: 'Nothing removes $\\sigma^2$.' }
       ]},
       { stem: 'As $\\lambda \\to \\infty$, the ridge solution approaches\u2026', options: [
-        { text: 'a flat fit (coefficients $\\to 0$)', correct: true, feedback: 'Correct \u2014 the penalty dominates and all weights shrink toward zero.' },
+        { text: 'a flat fit at the data\u2019s mean (slope coefficients $\\to 0$)', correct: true, feedback: 'Correct \u2014 the penalty shrinks the slope weights toward zero, leaving the unpenalized intercept at the mean.' },
         { text: 'the ordinary least-squares fit', correct: false, feedback: 'That is the $\\lambda \\to 0$ limit.' },
         { text: 'a perfect interpolation of the data', correct: false, feedback: 'The opposite \u2014 maximal shrinkage, not maximal flexibility.' },
         { text: 'an undefined model', correct: false, feedback: 'It is well defined: the constant/mean fit.' }

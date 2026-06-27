@@ -5,6 +5,12 @@
    and constant across themes, always paired with a redundant cue in the SVG.
    ========================================================================== */
 
+/* Quiz + base button component styles are the single source of truth in
+   quiz.css (also loaded standalone by reuse weeks like Week 3). Import them here
+   so Weeks 1-2/4-6 — which link only this sheet — share the same definitions.
+   CSS @import works on file:// (it is not an ES module). */
+@import "quiz.css";
+
 :root {
   --pl-bg: #f5f5f5;
   --pl-card: #ffffff;
@@ -119,17 +125,9 @@ body {
 .pl-control-inputs input[type="number"]:focus-visible { outline: none; border-color: var(--pl-accent); }
 
 .pl-btns { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 1rem; }
-.pl-btn {
-  padding: 9px 16px; font-size: 14px; border: 1px solid var(--pl-border);
-  border-radius: 8px; background: var(--pl-card); color: var(--pl-text);
-  cursor: pointer; transition: background 0.15s, border-color 0.15s;
-}
-.pl-btn:hover { background: var(--pl-panel); border-color: var(--pl-muted-2); }
-.pl-btn:focus-visible { outline: 3px solid var(--pl-accent); outline-offset: 2px; }
+/* base .pl-btn / .pl-btn-primary / .pl-btn-small come from quiz.css; the pressed
+   state for control-area toggle buttons is shell-specific (Week 3 has no toggles) */
 .pl-btn[aria-pressed="true"] { border-color: var(--pl-accent); box-shadow: inset 0 0 0 1px var(--pl-accent); }
-.pl-btn-primary { background: var(--pl-accent); color: #fff; border-color: var(--pl-accent); font-weight: 500; }
-.pl-btn-primary:hover { background: var(--pl-accent-2); border-color: var(--pl-accent-2); }
-.pl-btn-small { padding: 5px 12px; font-size: 13px; }
 
 /* ---- readout card --------------------------------------------------------- */
 .pl-info { background: var(--pl-panel); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.75rem; }
@@ -139,37 +137,8 @@ body {
 .pl-cell-value { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ---- quiz ----------------------------------------------------------------- */
-.pl-quiz { border-top: 1px solid var(--pl-border); margin-top: 1.5rem; padding-top: 1.5rem; }
-.pl-quiz-header h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.3rem; }
-.pl-quiz-status { font-size: 0.85rem; color: var(--pl-muted); margin-bottom: 1.25rem; }
-.pl-q { border: 0; margin-bottom: 1.5rem; }
-.pl-q-stem { font-weight: 500; margin-bottom: 0.6rem; }
-.pl-opt {
-  display: block; position: relative; border: 1px solid var(--pl-border);
-  border-radius: 8px; padding: 10px 12px 10px 38px; margin-bottom: 8px; cursor: pointer;
-}
-.pl-opt:hover { background: var(--pl-panel); }
-.pl-opt input { position: absolute; left: 12px; top: 13px; accent-color: var(--pl-accent); }
-.pl-opt-text { display: block; }
-.pl-opt-feedback { display: none; font-size: 0.85rem; color: var(--pl-muted); margin-top: 6px; }
-.pl-opt.is-correct { border-color: var(--pl-good-fg); background: var(--pl-good-bg); }
-.pl-opt.is-wrong   { border-color: var(--pl-bad-fg);  background: var(--pl-bad-bg); }
-.pl-opt.is-correct::after { content: "✓ correct"; }
-.pl-opt.is-wrong.is-picked::after { content: "✗ your choice"; }
-.pl-opt.is-correct::after, .pl-opt.is-wrong.is-picked::after {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
-  display: inline-block; margin-top: 4px; color: var(--pl-muted);
-}
-.pl-quiz-actions { margin: 1rem 0; }
-.pl-score { font-weight: 600; margin-bottom: 0.5rem; }
-.pl-quiz-hint { font-size: 0.9rem; color: var(--pl-muted); }
-.pl-receipt { background: var(--pl-good-bg); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 0.5rem; }
-.pl-receipt-label { font-size: 0.85rem; color: var(--pl-good-fg); font-weight: 600; margin-bottom: 0.5rem; }
-.pl-receipt-code {
-  display: block; background: var(--pl-card); border-radius: 6px; padding: 8px 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem;
-  margin-bottom: 0.5rem; word-break: break-word;
-}
+/* All quiz component styles (.pl-quiz, .pl-q, .pl-opt, .pl-receipt, ...) are the
+   single source of truth in quiz.css, imported at the top of this file. */
 
 .pl-attribution { margin-top: 1.75rem; font-size: 0.8rem; color: var(--pl-muted-2); text-align: center; }
 

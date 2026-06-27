@@ -9,97 +9,98 @@
 
   // ---- CONFIG (the only block that changes per week) ----------------------
   var CONFIG = {
-    unitId: 'week01-least-squares',
-    unitNumber: 1,
-    token: 'LINMOD-7F3A',          // per-week secret revealed at >= mastery
-    masteryThreshold: 0.8,         // 80%
-    quizPerAttempt: null,          // null = use full bank
-    xLabel: 'Patient age (years)',
-    yLabel: 'Resting systolic BP (mmHg)',
+    unitId: 'week05-kmeans',
+    unitNumber: 5,
+    token: 'KMEANS-3R7P',           // rotate per term; add to your week->token map
+    masteryThreshold: 0.8,
+    quizPerAttempt: null,
+    xLabel: 'BMI',
+    yLabel: 'Fasting glucose (mg/dL)',
+    k: { min: 2, max: 5, step: 1, default: 3 },
+    // 30 patients, no labels — three natural subtypes (healthy / pre-diabetic / diabetic)
     data: [
-      [26, 112], [31, 118], [34, 120], [38, 121], [41, 126], [45, 124],
-      [48, 131], [52, 129], [55, 134], [58, 138], [61, 140], [64, 143],
-      [68, 147], [71, 149], [74, 154]
+      [21,85],[22,88],[20,90],[23,84],[24,92],[22,95],[21,82],[23,90],[25,87],[22,86],
+      [29,112],[31,115],[28,108],[30,120],[32,118],[29,110],[31,122],[28,116],[30,113],[33,119],
+      [35,158],[37,165],[34,152],[36,160],[38,170],[35,155],[37,168],[39,162],[34,150],[36,172]
     ],
-    outlier: [30, 168],            // young patient, very high BP
     quiz: [
-      { stem: 'Least-squares fitting chooses the line that minimizes\u2026', options: [
-        { text: 'the sum of the residuals', correct: false, feedback: 'Positive and negative residuals cancel, so this can be near zero for a bad line.' },
-        { text: 'the sum of squared residuals \u2014 equivalently the mean squared error (the loss $\\mathcal{L}$)', correct: true, feedback: 'Correct. Squaring removes sign cancellation and gives a smooth objective.' },
-        { text: 'the largest single residual', correct: false, feedback: 'That is minimax (Chebyshev) fitting, a different objective.' },
-        { text: 'the number of points off the line', correct: false, feedback: 'Least squares uses distances, not counts.' }
+      { stem: 'K-means alternates two steps. The <em>update</em> step\u2026', options: [
+        { text: 'moves each centroid $\\boldsymbol{\\mu}_k$ to the mean of the points currently assigned to it', correct: true, feedback: 'Correct \u2014 update recomputes $\\boldsymbol{\\mu}_k$ as the mean of its assigned points.' },
+        { text: 'assigns each point to its nearest centroid', correct: false, feedback: 'That is the assignment step.' },
+        { text: 'removes the farthest point from each cluster', correct: false, feedback: 'K-means never discards points.' },
+        { text: 'increases the number of clusters', correct: false, feedback: 'k is fixed during a run.' }
       ]},
-      { stem: 'Why squared residuals rather than absolute residuals?', options: [
-        { text: 'Squaring forces the line through every point', correct: false, feedback: 'The line rarely passes through any single point.' },
-        { text: 'Squared error is differentiable everywhere and has a closed-form solution; it also penalizes large errors more', correct: true, feedback: 'Correct \u2014 smoothness plus the normal-equations solution.' },
-        { text: 'Absolute error cannot be computed numerically', correct: false, feedback: 'It can; it is just non-smooth at zero.' },
-        { text: 'Squaring is the only way to make residuals non-negative', correct: false, feedback: 'Absolute value also does that; it is not the distinguishing reason.' }
+      { stem: 'K-means seeks to minimize\u2026', options: [
+        { text: 'the within-cluster sum of squared distances $\\sum_k \\sum_{n:z_n=k} \\lVert \\mathbf{x}_n - \\boldsymbol{\\mu}_k \\rVert^2$ (distortion)', correct: true, feedback: 'Correct \u2014 total within-cluster squared distance, a.k.a. distortion/inertia.' },
+        { text: 'the distance between cluster centroids', correct: false, feedback: 'It minimizes within-cluster spread, not between-cluster distance.' },
+        { text: 'the number of iterations', correct: false, feedback: 'That is not the objective.' },
+        { text: 'the silhouette width directly', correct: false, feedback: 'Silhouette is a separate evaluation metric.' }
       ]},
-      { stem: 'You dragged the line and the loss (MSE) fell. This means\u2026', options: [
-        { text: 'every residual got smaller', correct: false, feedback: 'Total squared error fell; some individual residuals may have grown.' },
-        { text: 'the line now fits the data better in the least-squares sense', correct: true, feedback: 'Correct \u2014 lower MSE is exactly the least-squares notion of better.' },
-        { text: 'the line must now pass through every point', correct: false, feedback: 'Lower MSE does not imply a perfect fit.' },
-        { text: 'the slope must have increased', correct: false, feedback: 'MSE can fall from changing slope or intercept, either direction.' }
+      { stem: 'Why is k-means guaranteed to converge?', options: [
+        { text: 'each step never increases the distortion, and there are finitely many possible assignments', correct: true, feedback: 'Correct \u2014 monotonically non-increasing distortion + finite assignments \u21d2 convergence (to a local optimum).' },
+        { text: 'the centroids always reach the global optimum', correct: false, feedback: 'It reaches only a local optimum.' },
+        { text: 'it runs a fixed number of steps regardless of the data', correct: false, feedback: 'It stops when assignments stabilize.' },
+        { text: 'the data is always linearly separable', correct: false, feedback: 'Separability is unrelated.' }
       ]},
-      { stem: 'After "Add outlier," the least-squares line shifts noticeably toward the new point. Why?', options: [
-        { text: 'Least squares ignores points far from the line', correct: false, feedback: 'The opposite \u2014 far points dominate.' },
-        { text: 'Squared error grows with the square of the residual, so a far point contributes a large penalty and pulls the fit', correct: true, feedback: 'Correct \u2014 sensitivity to outliers is a property of squared loss.' },
-        { text: 'Adding a point changes N, and that is what tilts the line', correct: false, feedback: 'N changes, but that is not why the line tilts toward the outlier.' },
-        { text: 'Outliers are explicitly up-weighted in the normal equations', correct: false, feedback: 'There is no explicit weighting; the squaring does it.' }
+      { stem: 'You click \u201cNew centroids\u201d and get a different final clustering. This is because k-means\u2026', options: [
+        { text: 'converges to a local optimum that depends on initialization \u2014 so multiple restarts are used', correct: true, feedback: 'Correct \u2014 different starts can land in different local optima; restart and keep the lowest-distortion result.' },
+        { text: 'is random in its update step', correct: false, feedback: 'The update is deterministic given the assignments.' },
+        { text: 'never converges', correct: false, feedback: 'It does converge \u2014 just possibly to different optima.' },
+        { text: 'ignores the data entirely', correct: false, feedback: 'It very much uses the data.' }
       ]},
-      { stem: 'The normal equations give the least-squares solution as\u2026', options: [
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: true, feedback: 'Correct.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}\\mathbf{X}^\\top)^{-1}\\mathbf{y}^\\top\\mathbf{X}$', correct: false, feedback: 'Wrong shapes and order.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^{-1}\\mathbf{y}$', correct: false, feedback: '$X$ is generally not square or invertible.' }
+      { stem: 'The number of clusters $k$\u2026', options: [
+        { text: 'must be chosen by the user; the elbow of the distortion-vs-$k$ curve is a common heuristic', correct: true, feedback: 'Correct \u2014 $k$ is an input; pick it via the elbow, silhouette, or domain knowledge.' },
+        { text: 'is determined automatically by k-means', correct: false, feedback: 'k-means needs $k$ given up front.' },
+        { text: 'always equals the number of data points', correct: false, feedback: 'That would put one point per cluster.' },
+        { text: 'must always be 2', correct: false, feedback: 'Any $k \\ge 1$ is allowed.' }
       ]},
-      { stem: 'Extending the model with polynomial or basis features keeps it a <em>linear</em> model because\u2026', options: [
-        { text: 'the fitted curve is still a straight line', correct: false, feedback: 'The curve can bend.' },
-        { text: 'it is linear in the parameters, even if nonlinear in the inputs', correct: true, feedback: 'Correct \u2014 linearity refers to the parameters.' },
-        { text: 'only degree-1 features are allowed', correct: false, feedback: 'Higher-degree features are exactly the point.' },
-        { text: 'the data must be linearly separable', correct: false, feedback: 'That is a classification notion, not relevant here.' }
+      { stem: 'As you increase $k$ toward $N$ (the number of points), the distortion (WCSS)\u2026', options: [
+        { text: 'decreases monotonically, reaching zero at $k = N$ \u2014 so distortion alone cannot choose $k$', correct: true, feedback: 'Correct \u2014 more centroids always fit tighter; that is why you cannot pick $k$ by minimizing distortion.' },
+        { text: 'increases with $k$', correct: false, feedback: 'More clusters reduce within-cluster spread.' },
+        { text: 'stays constant', correct: false, feedback: 'It falls as $k$ grows.' },
+        { text: 'first rises then falls', correct: false, feedback: 'It decreases monotonically.' }
       ]},
-      { stem: 'Your fitted slope is about 0.8 mmHg per year. The best interpretation is\u2026', options: [
-        { text: 'a one-year-older patient is <em>caused</em> to have 0.8 mmHg higher BP', correct: false, feedback: 'A regression slope is association, not causation.' },
-        { text: 'on average, patients one year older have ~0.8 mmHg higher BP in this sample', correct: true, feedback: 'Correct \u2014 an average association within the sample.' },
-        { text: 'every patient\u2019s BP rises 0.8 mmHg each year', correct: false, feedback: 'It is an average trend, not an individual law.' },
-        { text: 'age explains 70% of the variation in BP', correct: false, feedback: 'That would be $R^2$, a different quantity.' }
+      { stem: 'K-means uses Euclidean distance, which effectively assumes clusters that are\u2026', options: [
+        { text: 'roughly spherical and similar in size; it struggles with elongated or very unequal clusters', correct: true, feedback: 'Correct \u2014 Euclidean distance favors round, comparable clusters; GMMs with full covariance are more flexible.' },
+        { text: 'arbitrarily shaped and sized', correct: false, feedback: 'That flexibility belongs to richer models.' },
+        { text: 'always exactly two in number', correct: false, feedback: 'Cluster count is unrelated to shape assumptions.' },
+        { text: 'linearly separable', correct: false, feedback: 'Separability is a classification notion.' }
       ]},
-      { stem: 'On a dataset whose true relationship curves sharply, the best straight-line fit will\u2026', options: [
-        { text: 'capture the pattern perfectly once MSE is minimized', correct: false, feedback: 'A line cannot bend.' },
-        { text: 'underfit \u2014 systematically miss the curvature, leaving structured residuals', correct: true, feedback: 'Correct \u2014 too rigid for the pattern.' },
-        { text: 'overfit the curvature', correct: false, feedback: 'Overfitting is excess flexibility; a line is too rigid.' },
-        { text: 'be undefined because the relationship is nonlinear', correct: false, feedback: 'The line is still defined, just a poor fit.' }
+      { stem: 'Compared with k-means\u2019 hard assignments, a Gaussian mixture model fit by EM makes\u2026', options: [
+        { text: 'soft assignments \u2014 each point gets a probability (responsibility) of belonging to each cluster', correct: true, feedback: 'Correct \u2014 GMM/EM gives soft responsibilities; k-means is the hard-assignment special case.' },
+        { text: 'no assignments at all', correct: false, feedback: 'EM assigns responsibilities to every point.' },
+        { text: 'even harder assignments than k-means', correct: false, feedback: 'EM softens, not hardens, the assignments.' },
+        { text: 'assignments only for the first cluster', correct: false, feedback: 'Every cluster gets responsibilities.' }
       ]},
-      { stem: 'Moving from regression to <em>linear classification</em>, the fitted line is used to\u2026', options: [
-        { text: 'predict a continuous output directly', correct: false, feedback: 'That is regression.' },
-        { text: 'define a decision boundary separating classes', correct: true, feedback: 'Correct.' },
-        { text: 'minimize squared error against labels with no other change', correct: false, feedback: 'Plain least squares on labels is a weak classifier; the boundary is the point.' },
-        { text: 'cluster the points into groups', correct: false, feedback: 'Clustering is unsupervised; classification uses labels.' }
+      { stem: 'K-means can be viewed as a limiting case of EM for a Gaussian mixture with\u2026', options: [
+        { text: 'spherical, equal covariance and hard assignments (\u201chard EM\u201d)', correct: true, feedback: 'Correct \u2014 shrink the GMM covariances toward equal spheres and harden the responsibilities and you recover k-means.' },
+        { text: 'arbitrary full covariances', correct: false, feedback: 'That is the general GMM, not k-means.' },
+        { text: 'a single cluster', correct: false, feedback: 'k-means uses $k$ clusters.' },
+        { text: 'no probabilistic model at all', correct: false, feedback: 'The connection is precisely through the GMM probability model.' }
       ]},
-      { stem: 'Two features in your design matrix are almost perfectly correlated. The likely effect is\u2026', options: [
-        { text: '$\\mathbf{X}^\\top\\mathbf{X}$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
-        { text: 'no effect; least squares handles any features', correct: false, feedback: 'Collinearity genuinely destabilizes the fit.' },
-        { text: 'MSE necessarily increases', correct: false, feedback: 'The fit can look fine while coefficients are unreliable.' },
-        { text: 'the model becomes nonlinear', correct: false, feedback: 'Collinearity does not change linearity.' }
+      { stem: 'Mapping k-means onto EM: the assignment step plays the role of the \u2026 and the update step the role of the \u2026', options: [
+        { text: 'E-step (assign / compute responsibilities) and M-step (re-estimate parameters), respectively', correct: true, feedback: 'Correct \u2014 assignment \u2248 E-step, centroid update \u2248 M-step.' },
+        { text: 'M-step and E-step, respectively', correct: false, feedback: 'Reversed \u2014 assignment is the E-step analogue.' },
+        { text: 'both an E-step', correct: false, feedback: 'They are the two different half-steps.' },
+        { text: 'neither; k-means is unrelated to EM', correct: false, feedback: 'They are closely analogous.' }
       ]},
-      { stem: 'Which of these is NOT a linear model (not linear in the parameters $w_0, w_1, w_2$)?', options: [
-        { text: '$f = w_0 + w_1 x + w_2 x^3$', correct: false, feedback: 'Linear in the parameters; $x^3$ is just a fixed feature.' },
-        { text: '$f = w_0 + \\cos(w_1 x) + w_2 x^2$', correct: true, feedback: 'Correct \u2014 $w_1$ sits inside $\\cos$, so it is nonlinear in a parameter.' },
-        { text: '$f = w_0 - w_1 x - w_2 x^2$', correct: false, feedback: 'Linear in the parameters.' },
-        { text: '$f = (\\sqrt{w_0}+x)(\\sqrt{w_0}-x) + w_1 - w_2$', correct: false, feedback: 'Expands to $w_0 - x^2 + w_1 - w_2$: linear in the parameters.' }
+      { stem: 'During iteration a centroid ends up with no points assigned. The standard fix is to\u2026', options: [
+        { text: 're-initialize that empty centroid (e.g., to a random point) \u2014 its mean is otherwise undefined', correct: true, feedback: 'Correct \u2014 an empty cluster has an undefined mean, so the centroid is re-seeded.' },
+        { text: 'delete a data point', correct: false, feedback: 'You never discard data.' },
+        { text: 'set the centroid to the origin', correct: false, feedback: 'An arbitrary fixed point is not the fix.' },
+        { text: 'stop the algorithm with an error', correct: false, feedback: 'It is handled by re-seeding, not failing.' }
       ]},
-      { stem: 'Least-squares estimates equal maximum-likelihood estimates when you assume\u2026', options: [
-        { text: 'the targets are uniformly distributed', correct: false, feedback: 'No.' },
-        { text: 'the noise around the line is i.i.d. Gaussian with constant variance', correct: true, feedback: 'Correct \u2014 minimizing squared error equals maximizing the Gaussian likelihood.' },
-        { text: 'the features are mutually independent', correct: false, feedback: 'That concerns collinearity, not the LS\u2013MLE link.' },
-        { text: 'the parameters have a Gaussian prior', correct: false, feedback: 'That gives MAP / ridge regression, not plain MLE.' }
+      { stem: 'The two features here (BMI ~20\u201340, glucose ~80\u2013180) are on very different scales. Without care, k-means would\u2026', options: [
+        { text: 'let the larger-scale feature (glucose) dominate the Euclidean distance \u2014 so features should be standardized first', correct: true, feedback: 'Correct \u2014 Euclidean distance is scale-sensitive; standardize features (this tool clusters in the scaled plot space).' },
+        { text: 'ignore both features', correct: false, feedback: 'It uses both, just unequally weighted by scale.' },
+        { text: 'automatically standardize them', correct: false, feedback: 'You must standardize; it does not happen for free.' },
+        { text: 'give the same answer regardless of scale', correct: false, feedback: 'Scaling changes the distances and thus the clusters.' }
       ]},
-      { stem: 'The closed-form least-squares fit is obtained by\u2026', options: [
-        { text: 'running gradient descent to convergence', correct: false, feedback: 'A valid numerical route, but a closed form exists here.' },
-        { text: 'taking partial derivatives of the loss w.r.t. each parameter, setting them to zero, and solving', correct: true, feedback: 'Correct.' },
-        { text: 'inverting the data matrix $X$ directly', correct: false, feedback: '$X$ is generally not square or invertible.' },
-        { text: 'maximizing the loss', correct: false, feedback: 'We minimize the loss, not maximize it.' }
+      { stem: 'After convergence on this data, the centroids represent\u2026', options: [
+        { text: 'the prototype (mean) of each discovered cluster \u2014 here, candidate patient subtypes found without using any diagnosis labels', correct: true, feedback: 'Correct \u2014 k-means is unsupervised: it discovers subtype prototypes from the features alone.' },
+        { text: 'the single most typical patient (an actual data point)', correct: false, feedback: 'A centroid is a mean, usually not a real data point.' },
+        { text: 'the decision boundary between known classes', correct: false, feedback: 'That is supervised classification, not clustering.' },
+        { text: 'the noise in the data', correct: false, feedback: 'Centroids summarize structure, not noise.' }
       ]}
     ]
   };

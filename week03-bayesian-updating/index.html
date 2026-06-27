@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bayesian Updating: Beta-Binomial Model</title>
+  
+  <!-- KaTeX for LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f5f5;
+      color: #2c2c2a;
+      line-height: 1.6;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: #2c2c2a;
+    }
+    .subtitle {
+      font-size: 0.95rem;
+      color: #5f5e5a;
+      margin-bottom: 1.5rem;
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .input-group {
+      background: #f1efe8;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .input-group label {
+      font-size: 13px;
+      color: #5f5e5a;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d3d1c7;
+      border-radius: 6px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .input-group input:focus {
+      outline: none;
+      border-color: #534ab7;
+    }
+    .button-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 15px;
+      border: 1px solid #b4b2a9;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:hover { background: #f1efe8; }
+    button:active { transform: scale(0.98); }
+    .reset-btn {
+      flex: 0 0 auto;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: #5f5e5a;
+    }
+    .stat-card {
+      background: #f1efe8;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-card .label {
+      font-size: 13px;
+      color: #5f5e5a;
+    }
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 500;
+    }
+    .sequence-box {
+      background: #f1efe8;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      min-height: 52px;
+    }
+    .sequence-box .label {
+      font-size: 13px;
+      color: #5f5e5a;
+      margin-bottom: 8px;
+    }
+    .sequence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 14px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    .sequence .placeholder {
+      color: #888780;
+      font-style: italic;
+    }
+    .sequence .toss-h { color: #185fa5; }
+    .sequence .toss-t { color: #ba7517; }
+    .sequence .toss-last { font-weight: 500; border: 2px solid currentColor; padding: 2px 6px; border-radius: 4px; }
+    .sequence .toss { padding: 2px 6px; border-radius: 4px; }
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 1.5rem;
+    }
+    .chart-panel .title {
+      font-size: 13px;
+      color: #5f5e5a;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 240px;
+    }
+    .chart-container-small {
+      position: relative;
+      width: 100%;
+      height: 200px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #5f5e5a;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+    .legend .placeholder {
+      color: #888780;
+      font-style: italic;
+    }
+    .toggle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+    .toggle-btn {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      border: 1.5px solid;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+      background: transparent;
+      font-weight: 500;
+    }
+    .toggle-btn.off { opacity: 0.35; }
+    .toggle-btn .toggle-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .equation-box {
+      background: #f8f7f4;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .equation-box .eq-label {
+      color: #5f5e5a;
+      font-size: 0.85rem;
+      display: block;
+      margin-bottom: 0.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    /* Markdown content styling */
+    .markdown p { margin-bottom: 0.75rem; }
+    .markdown ul, .markdown ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+    .markdown code { background: #f1efe8; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+    .markdown pre { background: #f1efe8; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    .markdown pre code { background: none; padding: 0; }
+    .markdown a { color: #185fa5; }
+    .markdown blockquote { border-left: 3px solid #d3d1c7; padding-left: 1rem; margin: 0.75rem 0; color: #5f5e5a; }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a1a; color: #e5e5e5; }
+      .container { background: #2c2c2a; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+      h1 { color: #e5e5e5; }
+      .subtitle { color: #b4b2a9; }
+      .equation-box { background: #3a3a38; color: #e5e5e5; }
+      .equation-box .eq-label { color: #b4b2a9; }
+      .input-group { background: #3a3a38; }
+      .input-group label { color: #b4b2a9; }
+      .input-group input { background: #2c2c2a; border-color: #5f5e5a; color: #e5e5e5; }
+      .input-group input:focus { border-color: #afa9ec; }
+      button { background: #3a3a38; border-color: #5f5e5a; color: #e5e5e5; }
+      button:hover { background: #444441; }
+      .reset-btn { color: #b4b2a9; }
+      .stat-card { background: #3a3a38; }
+      .stat-card .label { color: #b4b2a9; }
+      .sequence-box { background: #3a3a38; }
+      .sequence-box .label { color: #b4b2a9; }
+      .sequence .placeholder { color: #888780; }
+      .sequence .toss-h { color: #85b7eb; }
+      .sequence .toss-t { color: #fac775; }
+      .chart-panel .title { color: #b4b2a9; }
+      .legend { color: #b4b2a9; }
+      .legend .placeholder { color: #888780; }
+      .markdown code { background: #444441; }
+      .markdown pre { background: #444441; }
+      .markdown a { color: #85b7eb; }
+      .markdown blockquote { border-left-color: #5f5e5a; color: #b4b2a9; }
+    }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bayesian updating: Binomial likelihood with Beta prior</h1>
+    <p class="markdown">
+    
+        This demo illustrates how the posterior distribution and its mean and
+        variance evolve with additional observed coin tosses.
+
+        This demo was created by Adarsh Pyarelal with assistance from Claude on
+        2026-03-23.
+    </p>
+
+    <!-- 
+      EDITABLE CONTENT SECTION
+      ========================
+      You can use LaTeX math notation here:
+      - Inline math: $x^2$ or \(x^2\)
+      - Display math: $$x^2$$ or \[x^2\]
+      
+      You can also use Markdown in elements with class="markdown":
+      - **bold**, *italic*, `code`
+      - [links](url), lists, etc.
+    -->
+    
+    <div class="equation-box">
+      <span class="eq-label">Beta prior</span>
+      $$p(r \mid a, b) = \mathrm{Beta}(r | a, b)$$
+    </div>
+
+    <div class="grid-2">
+      <div class="input-group">
+        <label>Parameter $a$</label>
+        <input type="number" id="alpha" value="1" step="1">
+      </div>
+      <div class="input-group">
+        <label>Parameter $b$</label>
+        <input type="number" id="beta" value="1" step="1">
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="addHeads">Add heads</button>
+      <button id="addTails">Add tails</button>
+      <button id="reset" class="reset-btn">Reset</button>
+    </div>
+
+    <div class="grid-3">
+      <div class="stat-card">
+        <div class="label">Observations</div>
+        <div class="value" id="nObs">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Posterior mean</div>
+        <div class="value" id="postMean">0.50</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Posterior variance</div>
+        <div class="value" id="postVar">0.083</div>
+      </div>
+    </div>
+
+    <div class="sequence-box">
+      <div class="label">Toss sequence</div>
+      <div class="sequence" id="sequence">
+        <span class="placeholder">No tosses yet</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <div class="chart-panel">
+        <div class="title" id="titleRight">After latest toss (0 H, 0 T)</div>
+        <div class="toggle-row" id="toggleRow">
+          <button class="toggle-btn" id="togglePrior" data-key="prior">
+            <span class="toggle-dot" id="dotPrior"></span>Prior
+          </button>
+          <button class="toggle-btn" id="togglePrev" data-key="prev">
+            <span class="toggle-dot" id="dotPrev"></span>Previous posterior
+          </button>
+          <button class="toggle-btn" id="togglePost" data-key="post">
+            <span class="toggle-dot" id="dotPost"></span>Current posterior
+          </button>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartRight"></canvas>
+        </div>
+        <div class="legend" id="legendRight"></div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-panel">
+        <div class="title">Posterior mean over tosses</div>
+        <div class="chart-container-small">
+          <canvas id="chartMean"></canvas>
+        </div>
+      </div>
+      <div class="chart-panel">
+        <div class="title">Posterior variance over tosses</div>
+        <div class="chart-container-small">
+          <canvas id="chartVar"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
+  <script>
+    const alphaInput = document.getElementById('alpha');
+    const betaInput = document.getElementById('beta');
+    const addHeadsBtn = document.getElementById('addHeads');
+    const addTailsBtn = document.getElementById('addTails');
+    const resetBtn = document.getElementById('reset');
+    const nObsEl = document.getElementById('nObs');
+    const postMeanEl = document.getElementById('postMean');
+    const postVarEl = document.getElementById('postVar');
+    const sequenceEl = document.getElementById('sequence');
+    const legendRightEl = document.getElementById('legendRight');
+    const titleRightEl = document.getElementById('titleRight');
+
+    let tosses = [];
+    let chartRight = null, chartMean = null, chartVar = null;
+    const toggleState = { prior: true, prev: true, post: true };
+
+    function updateToggleButtons(c) {
+      const isDark = c.isDark;
+      const prevColor = isDark ? '#F5C4B3' : '#993C1D';
+      const configs = {
+        prior: { color: c.priorColor, el: document.getElementById('togglePrior'), dot: document.getElementById('dotPrior') },
+        prev:  { color: prevColor,     el: document.getElementById('togglePrev'),  dot: document.getElementById('dotPrev')  },
+        post:  { color: c.postColor,   el: document.getElementById('togglePost'),  dot: document.getElementById('dotPost')  },
+      };
+      for (const [key, { color, el, dot }] of Object.entries(configs)) {
+        dot.style.background = color;
+        el.style.borderColor = color;
+        el.style.color = color;
+        el.classList.toggle('off', !toggleState[key]);
+      }
+    }
+
+    function gamma(z) { return jStat.gammafn(z); }
+
+    function betaPDF(x, a, b) {
+      // Handle boundary cases based on parameter values
+      if (x <= 0) {
+        if (a < 1) return Infinity;
+        if (a === 1) return gamma(a + b) / (gamma(a) * gamma(b));
+        return 0;
+      }
+      if (x >= 1) {
+        if (b < 1) return Infinity;
+        if (b === 1) return gamma(a + b) / (gamma(a) * gamma(b));
+        return 0;
+      }
+      const B = gamma(a) * gamma(b) / gamma(a + b);
+      return Math.pow(x, a - 1) * Math.pow(1 - x, b - 1) / B;
+    }
+
+    function betaVariance(a, b) {
+      return (a * b) / ((a + b) * (a + b) * (a + b + 1));
+    }
+
+    function betaMean(a, b) { return a / (a + b); }
+
+    function generateBetaData(a, b, label, borderColor, bgColor) {
+      const points = [];
+      // Start slightly inside to avoid infinite values at boundaries when a<1 or b<1
+      const startX = (a < 1) ? 0.005 : 0;
+      const endX = (b < 1) ? 0.995 : 1;
+      const numPoints = 100;
+      for (let i = 0; i <= numPoints; i++) {
+        const x = startX + (endX - startX) * (i / numPoints);
+        const y = betaPDF(x, a, b);
+        points.push({ x, y: isFinite(y) ? y : 0 });
+      }
+      return { label, data: points, borderColor, backgroundColor: bgColor, borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0 };
+    }
+
+    function getColors() {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return {
+        isDark,
+        priorColor: isDark ? '#9FE1CB' : '#0F6E56',
+        priorBg: isDark ? 'rgba(159,225,203,0.15)' : 'rgba(15,110,86,0.15)',
+        postColor: isDark ? '#AFA9EC' : '#534AB7',
+        postBg: isDark ? 'rgba(175,169,236,0.25)' : 'rgba(83,74,183,0.25)',
+        varColor: isDark ? '#F5C4B3' : '#993C1D',
+        textColor: isDark ? '#B4B2A9' : '#5F5E5A',
+        gridColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+      };
+    }
+
+    function createBetaChart(ctx, datasets) {
+      const c = getColors();
+      return new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { type: 'linear', min: 0, max: 1,
+              title: { display: true, text: 'r (probability of heads)', color: c.textColor, font: { size: 11 } },
+              ticks: { color: c.textColor, font: { size: 10 } },
+              grid: { color: c.gridColor }
+            },
+            y: { min: 0,
+              title: { display: true, text: 'Density', color: c.textColor, font: { size: 11 } },
+              ticks: { color: c.textColor, font: { size: 10 } },
+              grid: { color: c.gridColor }
+            }
+          },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}` } } }
+        }
+      });
+    }
+
+    function createLineChart(ctx, data, label, color, yLabel, yMin) {
+      const c = getColors();
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map((_, i) => i),
+          datasets: [{ label, data, borderColor: color, backgroundColor: color + '33', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: color }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Toss number', color: c.textColor, font: { size: 11 } },
+              ticks: { color: c.textColor, font: { size: 10 } },
+              grid: { color: c.gridColor }
+            },
+            y: { min: yMin, title: { display: true, text: yLabel, color: c.textColor, font: { size: 11 } },
+              ticks: { color: c.textColor, font: { size: 10 } },
+              grid: { color: c.gridColor }
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function updateCharts() {
+      const priorAlpha = parseFloat(alphaInput.value) || 1;
+      const priorBeta = parseFloat(betaInput.value) || 1;
+      
+      const heads = tosses.filter(t => t === 'H').length;
+      const tailsCount = tosses.filter(t => t === 'T').length;
+      const postAlpha = priorAlpha + heads;
+      const postBeta = priorBeta + tailsCount;
+      
+      let prevHeads = heads, prevTails = tailsCount;
+      if (tosses.length > 0) { if (tosses[tosses.length - 1] === 'H') prevHeads--; else prevTails--; }
+      const prevAlpha = priorAlpha + prevHeads;
+      const prevBeta = priorBeta + prevTails;
+
+      nObsEl.textContent = tosses.length;
+      const mean = betaMean(postAlpha, postBeta);
+      postMeanEl.textContent = mean.toFixed(2);
+      const variance = betaVariance(postAlpha, postBeta);
+      postVarEl.textContent = variance.toFixed(3);
+      
+      if (tosses.length === 0) {
+        sequenceEl.innerHTML = '<span class="placeholder">No tosses yet</span>';
+      } else {
+        sequenceEl.innerHTML = tosses.map((t, i) => {
+          const isLast = i === tosses.length - 1;
+          const tossClass = t === 'H' ? 'toss-h' : 'toss-t';
+          const lastClass = isLast ? 'toss-last' : 'toss';
+          return `<span class="${tossClass} ${lastClass}">${t}</span>`;
+        }).join('');
+      }
+
+      const c = getColors();
+      const isDark = c.isDark;
+      const prevColor = isDark ? '#F5C4B3' : '#993C1D';
+      const prevBg = isDark ? 'rgba(245,196,179,0.15)' : 'rgba(153,60,29,0.15)';
+
+      updateToggleButtons(c);
+
+      // Right panel — build all possible datasets, then filter by toggle state
+      if (tosses.length === 0) {
+        titleRightEl.textContent = `Prior distribution: Beta(${priorAlpha.toFixed(1)}, ${priorBeta.toFixed(1)})`;
+      } else {
+        titleRightEl.textContent = `After latest toss (${heads} H, ${tailsCount} T)`;
+      }
+
+      const allDatasets = [
+        { key: 'prior', data: generateBetaData(priorAlpha, priorBeta, `Prior: Beta(${priorAlpha.toFixed(1)}, ${priorBeta.toFixed(1)})`, c.priorColor, c.priorBg), color: c.priorColor, label: `Prior: Beta(${priorAlpha.toFixed(1)}, ${priorBeta.toFixed(1)})` },
+        { key: 'prev',  data: generateBetaData(prevAlpha, prevBeta, `Previous: Beta(${prevAlpha.toFixed(1)}, ${prevBeta.toFixed(1)})`, prevColor, prevBg), color: prevColor, label: `Previous: Beta(${prevAlpha.toFixed(1)}, ${prevBeta.toFixed(1)})`, minTosses: 2 },
+        { key: 'post',  data: generateBetaData(postAlpha, postBeta, `Posterior: Beta(${postAlpha.toFixed(1)}, ${postBeta.toFixed(1)})`, c.postColor, c.postBg), color: c.postColor, label: `Posterior: Beta(${postAlpha.toFixed(1)}, ${postBeta.toFixed(1)})`, minTosses: 1 },
+      ];
+
+      const rightDatasets = allDatasets
+        .filter(d => toggleState[d.key] && tosses.length >= (d.minTosses || 0))
+        .map(d => d.data);
+
+      legendRightEl.innerHTML = allDatasets
+        .filter(d => tosses.length >= (d.minTosses || 0))
+        .map(d => `<span class="legend-item"><span class="legend-dot" style="background: ${d.color}; opacity: ${toggleState[d.key] ? 1 : 0.35};"></span>${d.label}</span>`)
+        .join('');
+
+      // Compute mean/variance history
+      const meanHistory = [betaMean(priorAlpha, priorBeta)];
+      const varHistory = [betaVariance(priorAlpha, priorBeta)];
+      let h = 0, t = 0;
+      for (const toss of tosses) {
+        if (toss === 'H') h++; else t++;
+        meanHistory.push(betaMean(priorAlpha + h, priorBeta + t));
+        varHistory.push(betaVariance(priorAlpha + h, priorBeta + t));
+      }
+
+      // Update beta chart
+      if (chartRight) { chartRight.data.datasets = rightDatasets; chartRight.update('none'); }
+      else { chartRight = createBetaChart(document.getElementById('chartRight').getContext('2d'), rightDatasets); }
+
+      // Update line charts
+      if (chartMean) {
+        chartMean.data.labels = meanHistory.map((_, i) => i);
+        chartMean.data.datasets[0].data = meanHistory;
+        chartMean.update('none');
+      } else {
+        chartMean = createLineChart(document.getElementById('chartMean').getContext('2d'), meanHistory, 'Mean', c.postColor, 'Mean', 0.4);
+      }
+
+      if (chartVar) {
+        chartVar.data.labels = varHistory.map((_, i) => i);
+        chartVar.data.datasets[0].data = varHistory;
+        chartVar.update('none');
+      } else {
+        chartVar = createLineChart(document.getElementById('chartVar').getContext('2d'), varHistory, 'Variance', c.varColor, 'Variance', undefined);
+      }
+    }
+
+    addHeadsBtn.addEventListener('click', () => { tosses.push('H'); updateCharts(); });
+    addTailsBtn.addEventListener('click', () => { tosses.push('T'); updateCharts(); });
+    resetBtn.addEventListener('click', () => { tosses = []; updateCharts(); });
+    alphaInput.addEventListener('input', updateCharts);
+
+    ['togglePrior', 'togglePrev', 'togglePost'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => {
+        const key = document.getElementById(id).dataset.key;
+        toggleState[key] = !toggleState[key];
+        updateCharts();
+      });
+    });
+    betaInput.addEventListener('input', updateCharts);
+
+    updateCharts();
+    
+    // Initialize KaTeX auto-render when the library is loaded
+    document.addEventListener("DOMContentLoaded", function() {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+    });
+    
+    // Fallback: try again after a short delay in case scripts loaded late
+    window.addEventListener('load', function() {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+    });
+  </script>
+</body>
+</html>

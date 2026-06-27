@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Week 1 · The Linear Model — INFO 521</title>
+  <title>Week 5 · K-Means Clustering — INFO 521</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="../shared/shell.css">
@@ -14,17 +14,18 @@
 </head>
 <body>
   <div class="pl-container">
-    <h1>The linear model: least squares by hand</h1>
+    <h1>K-means: discovering patient subtypes</h1>
     <p class="pl-subtitle">
-      Each point is a patient: age on the x-axis, resting systolic blood pressure on the
-      y-axis. Drag the endpoints of the line, or use the sliders, to fit it by eye. Watch
-      the residuals and the loss respond, then compare your fit to the least-squares optimum.
+      Each point is a patient — BMI on the x-axis, fasting glucose on the y-axis, with no
+      diagnosis labels. Drag the k centroids to seed them, then step through the assignment
+      and update phases (or run to convergence) and watch clusters emerge. Try "New centroids"
+      to see how the starting point changes where it lands.
     </p>
 
     <div class="pl-eq">
-      <div>$$\mathcal{L} = \frac{1}{N}\sum_{n=1}^{N}\bigl(y_n - (w_0 + w_1 x_n)\bigr)^2$$</div>
-      <div class="pl-eq-note">minimized by</div>
-      <div>$$\hat{w} = (X^\top X)^{-1} X^\top y$$</div>
+      <div>$$\mathcal{L} = \sum_{k=1}^{K} \sum_{n:\, z_n = k} \lVert \mathbf{x}_n - \boldsymbol{\mu}_k \rVert^2$$</div>
+      <div class="pl-eq-note">minimized by alternating assignment and update</div>
+      <div>$$z_n = \arg\min_k \lVert \mathbf{x}_n - \boldsymbol{\mu}_k \rVert^2 \qquad \boldsymbol{\mu}_k = \frac{1}{N_k}\sum_{n:\, z_n = k} \mathbf{x}_n$$</div>
     </div>
 
     <div class="pl-panel">
@@ -32,11 +33,9 @@
     </div>
 
     <div class="pl-legend" aria-hidden="true">
-      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Patients</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Your fit</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>Least squares</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>Residuals</span>
-      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#D55E00;"></span>Outlier</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span><span class="pl-swatch dot" style="background:#D55E00;"></span><span class="pl-swatch dot" style="background:#009E73;"></span>Patients (by cluster)</span>
+      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#888780;"></span>Centroids</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:rgba(0,114,178,0.18);"></span>Cluster regions</span>
     </div>
 
     <div class="pl-controls">

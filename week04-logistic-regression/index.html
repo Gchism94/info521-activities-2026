@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Week 1 · The Linear Model — INFO 521</title>
+  <title>Week 4 · Logistic Regression — INFO 521</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="../shared/shell.css">
@@ -14,17 +14,18 @@
 </head>
 <body>
   <div class="pl-container">
-    <h1>The linear model: least squares by hand</h1>
+    <h1>Logistic regression: drawing the line between classes</h1>
     <p class="pl-subtitle">
-      Each point is a patient: age on the x-axis, resting systolic blood pressure on the
-      y-axis. Drag the endpoints of the line, or use the sliders, to fit it by eye. Watch
-      the residuals and the loss respond, then compare your fit to the least-squares optimum.
+      Each point is a patient — tumor size on the x-axis, benign or malignant by color.
+      Slide the bias and steepness to place the S-curve and its decision boundary, watch the
+      log loss and accuracy respond, then "Show MLE fit" for the maximum-likelihood solution
+      and "Generative comparison" to see how a Gaussian per-class model reaches the same boundary.
     </p>
 
     <div class="pl-eq">
-      <div>$$\mathcal{L} = \frac{1}{N}\sum_{n=1}^{N}\bigl(y_n - (w_0 + w_1 x_n)\bigr)^2$$</div>
-      <div class="pl-eq-note">minimized by</div>
-      <div>$$\hat{w} = (X^\top X)^{-1} X^\top y$$</div>
+      <div>$$p(y{=}1 \mid x) = \sigma(w_0 + w_1 x) = \dfrac{1}{1 + e^{-(w_0 + w_1 x)}}$$</div>
+      <div class="pl-eq-note">fit by minimizing the cross-entropy loss</div>
+      <div>$$\mathcal{L} = -\dfrac{1}{N}\sum_{n} \big[\, y_n \log p_n + (1 - y_n)\log(1 - p_n) \,\big]$$</div>
     </div>
 
     <div class="pl-panel">
@@ -32,11 +33,11 @@
     </div>
 
     <div class="pl-legend" aria-hidden="true">
-      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Patients</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Your fit</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>Least squares</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>Residuals</span>
-      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#D55E00;"></span>Outlier</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Benign</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#D55E00;"></span>Malignant</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Logistic fit $p(y{=}1\mid x)$</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#5f5e5a; border-top-style:dashed;"></span>Decision boundary</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#56B4E9; border-top-style:dashed;"></span>Class-conditional densities</span>
     </div>
 
     <div class="pl-controls">

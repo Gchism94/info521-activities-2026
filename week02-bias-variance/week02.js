@@ -252,7 +252,7 @@
   var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
   var x = d3.scaleLinear().domain(CONFIG.xDomain).range([0, iw]);
   var y = d3.scaleLinear().domain(CONFIG.yDomain).range([ih, 0]);
-  var triangle = d3.symbol().type(d3.symbolTriangle).size(46);
+  var diamond = d3.symbol().type(d3.symbolDiamond).size(42);
 
   // clip curves so wild high-degree fits stay inside the plot area
   var clipId = 'clip-' + CONFIG.unitId;
@@ -316,10 +316,10 @@
     fitCurve.attr('d', line(curvePoints(function (xv) { return predict(w, xv); })))
       .attr('fill', 'none').attr('stroke', ok.purple).attr('stroke-width', 2.5);
 
-    // test points: orange triangles (shape cue), faint, only when toggled on
+    // test points: orange diamonds (shape cue), faint, only when toggled on
     var testData = state.showTest ? testX.map(function (xv, i) { return [xv, testY[i]]; }) : [];
     var ts = gTest.selectAll('path').data(testData);
-    ts.enter().append('path').attr('d', triangle)
+    ts.enter().append('path').attr('d', diamond)
       .attr('fill', ok.orange).attr('fill-opacity', 0.55)
       .merge(ts)
       .attr('transform', function (d) { return 'translate(' + x(d[0]) + ',' + y(d[1]) + ')'; });

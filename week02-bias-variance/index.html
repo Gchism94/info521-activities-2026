@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Week 1 · The Linear Model — INFO 521</title>
+  <title>Week 2 · Bias, Variance, Regularization — INFO 521</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="../shared/shell.css">
@@ -14,17 +14,18 @@
 </head>
 <body>
   <div class="pl-container">
-    <h1>The linear model: least squares by hand</h1>
+    <h1>Bias, variance, and the cost of complexity</h1>
     <p class="pl-subtitle">
-      Each point is a patient: age on the x-axis, resting systolic blood pressure on the
-      y-axis. Drag the endpoints of the line, or use the sliders, to fit it by eye. Watch
-      the residuals and the loss respond, then compare your fit to the least-squares optimum.
+      Each point is a patient's response at a given treatment dose; the true dose–response
+      curve peaks at a moderate dose. Raise the polynomial degree to fit it and watch training
+      vs. test error diverge, then use "Show 20 fits" to see variance directly and the ridge
+      penalty $\lambda$ to tame it.
     </p>
 
     <div class="pl-eq">
-      <div>$$\mathcal{L} = \frac{1}{N}\sum_{n=1}^{N}\bigl(y_n - (w_0 + w_1 x_n)\bigr)^2$$</div>
-      <div class="pl-eq-note">minimized by</div>
-      <div>$$\hat{w} = (X^\top X)^{-1} X^\top y$$</div>
+      <div>$$\mathbb{E}\big[(y - \hat f(\mathbf{x}))^2\big] = \underbrace{(\mathbb{E}[\hat f(\mathbf{x})] - f(\mathbf{x}))^2}_{\text{bias}^2} + \underbrace{\mathrm{Var}[\hat f(\mathbf{x})]}_{\text{variance}} + \sigma^2$$</div>
+      <div class="pl-eq-note">ridge regression trades variance for bias</div>
+      <div>$$\hat{\mathbf{w}} = \arg\min_{\mathbf{w}} \lVert \mathbf{y} - \mathbf{X}\mathbf{w} \rVert^2 + \lambda \lVert \mathbf{w} \rVert^2$$</div>
     </div>
 
     <div class="pl-panel">
@@ -32,11 +33,11 @@
     </div>
 
     <div class="pl-legend" aria-hidden="true">
-      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Patients</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#56B4E9; border-top-style:dashed;"></span>True curve</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Training points</span>
       <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Your fit</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>Least squares</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>Residuals</span>
-      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#D55E00;"></span>Outlier</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7; opacity:0.4;"></span>20-fit overlay</span>
+      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#E69F00;"></span>Test points</span>
     </div>
 
     <div class="pl-controls">

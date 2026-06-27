@@ -9,97 +9,99 @@
 
   // ---- CONFIG (the only block that changes per week) ----------------------
   var CONFIG = {
-    unitId: 'week01-least-squares',
-    unitNumber: 1,
-    token: 'LINMOD-7F3A',          // per-week secret revealed at >= mastery
-    masteryThreshold: 0.8,         // 80%
-    quizPerAttempt: null,          // null = use full bank
-    xLabel: 'Patient age (years)',
-    yLabel: 'Resting systolic BP (mmHg)',
+    unitId: 'week04-logistic-regression',
+    unitNumber: 4,
+    token: 'LOGIT-8H2M',            // rotate per term; add to your week->token map
+    masteryThreshold: 0.8,
+    quizPerAttempt: null,
+    xLabel: 'Tumor size (mm)',
+    yLabel: 'P(malignant)',
+    classLabels: { 0: 'Benign', 1: 'Malignant' },
+    // [size_mm, class] — intentionally overlapping so the MLE is finite
     data: [
-      [26, 112], [31, 118], [34, 120], [38, 121], [41, 126], [45, 124],
-      [48, 131], [52, 129], [55, 134], [58, 138], [61, 140], [64, 143],
-      [68, 147], [71, 149], [74, 154]
+      [8,0],[10,0],[11,0],[13,0],[14,0],[15,0],[16,0],[18,0],[21,0],[23,0],
+      [17,1],[19,1],[20,1],[22,1],[24,1],[25,1],[27,1],[29,1],[31,1],[33,1]
     ],
-    outlier: [30, 168],            // young patient, very high BP
+    w0: { min: -25, max: 5,  step: 0.1,  default: -3 },   // bias
+    w1: { min: 0.05, max: 1.0, step: 0.01, default: 0.2 }, // steepness
     quiz: [
-      { stem: 'Least-squares fitting chooses the line that minimizes\u2026', options: [
-        { text: 'the sum of the residuals', correct: false, feedback: 'Positive and negative residuals cancel, so this can be near zero for a bad line.' },
-        { text: 'the sum of squared residuals \u2014 equivalently the mean squared error (the loss $\\mathcal{L}$)', correct: true, feedback: 'Correct. Squaring removes sign cancellation and gives a smooth objective.' },
-        { text: 'the largest single residual', correct: false, feedback: 'That is minimax (Chebyshev) fitting, a different objective.' },
-        { text: 'the number of points off the line', correct: false, feedback: 'Least squares uses distances, not counts.' }
+      { stem: 'Logistic regression turns a linear score $z = w_0 + w_1 x$ into a class probability by applying\u2026', options: [
+        { text: 'the sigmoid $\\sigma(z) = 1/(1+e^{-z})$, which maps $z$ to $(0,1)$', correct: true, feedback: 'Correct \u2014 the sigmoid squashes the unbounded score into a $(0,1)$ probability.' },
+        { text: 'a step function returning 0 or 1', correct: false, feedback: 'That is a hard threshold, not a probability.' },
+        { text: 'the identity ($z$ itself)', correct: false, feedback: '$z$ is unbounded, so it is not a probability.' },
+        { text: 'a softmax over the features', correct: false, feedback: 'Softmax is over classes in the multiclass case, not single-feature here.' }
       ]},
-      { stem: 'Why squared residuals rather than absolute residuals?', options: [
-        { text: 'Squaring forces the line through every point', correct: false, feedback: 'The line rarely passes through any single point.' },
-        { text: 'Squared error is differentiable everywhere and has a closed-form solution; it also penalizes large errors more', correct: true, feedback: 'Correct \u2014 smoothness plus the normal-equations solution.' },
-        { text: 'Absolute error cannot be computed numerically', correct: false, feedback: 'It can; it is just non-smooth at zero.' },
-        { text: 'Squaring is the only way to make residuals non-negative', correct: false, feedback: 'Absolute value also does that; it is not the distinguishing reason.' }
+      { stem: 'The decision boundary, where $p(y{=}1 \\mid x) = 0.5$, corresponds to the linear score\u2026', options: [
+        { text: '$z = w_0 + w_1 x = 0$', correct: true, feedback: 'Correct \u2014 $\\sigma(0) = 0.5$, so the boundary is where the score is zero.' },
+        { text: '$z = 0.5$', correct: false, feedback: '$p = 0.5$ corresponds to $z = 0$, not $z = 0.5$.' },
+        { text: '$z = 1$', correct: false, feedback: 'That gives $p \\approx 0.73$, not the boundary.' },
+        { text: '$z \\to \\infty$', correct: false, feedback: 'That pushes $p \\to 1$, far from the boundary.' }
       ]},
-      { stem: 'You dragged the line and the loss (MSE) fell. This means\u2026', options: [
-        { text: 'every residual got smaller', correct: false, feedback: 'Total squared error fell; some individual residuals may have grown.' },
-        { text: 'the line now fits the data better in the least-squares sense', correct: true, feedback: 'Correct \u2014 lower MSE is exactly the least-squares notion of better.' },
-        { text: 'the line must now pass through every point', correct: false, feedback: 'Lower MSE does not imply a perfect fit.' },
-        { text: 'the slope must have increased', correct: false, feedback: 'MSE can fall from changing slope or intercept, either direction.' }
+      { stem: 'Logistic regression is a <em>discriminative</em> model because it\u2026', options: [
+        { text: 'models $p(y \\mid x)$ directly', correct: true, feedback: 'Correct \u2014 discriminative models target the conditional $p(y\\mid x)$.' },
+        { text: 'models $p(x \\mid y)$ and $p(y)$, then applies Bayes\u2019 rule', correct: false, feedback: 'That describes a generative classifier.' },
+        { text: 'does not use the class labels', correct: false, feedback: 'It is supervised \u2014 it very much uses the labels.' },
+        { text: 'requires a Gaussian assumption on $x$', correct: false, feedback: 'That assumption belongs to a generative model, not logistic regression.' }
       ]},
-      { stem: 'After "Add outlier," the least-squares line shifts noticeably toward the new point. Why?', options: [
-        { text: 'Least squares ignores points far from the line', correct: false, feedback: 'The opposite \u2014 far points dominate.' },
-        { text: 'Squared error grows with the square of the residual, so a far point contributes a large penalty and pulls the fit', correct: true, feedback: 'Correct \u2014 sensitivity to outliers is a property of squared loss.' },
-        { text: 'Adding a point changes N, and that is what tilts the line', correct: false, feedback: 'N changes, but that is not why the line tilts toward the outlier.' },
-        { text: 'Outliers are explicitly up-weighted in the normal equations', correct: false, feedback: 'There is no explicit weighting; the squaring does it.' }
+      { stem: 'A <em>generative</em> classifier (e.g., Gaussian discriminant analysis, naive Bayes) instead\u2026', options: [
+        { text: 'models $p(x \\mid y)$ and $p(y)$, then uses Bayes\u2019 rule to get $p(y \\mid x)$', correct: true, feedback: 'Correct \u2014 it models the data within each class, then inverts with Bayes.' },
+        { text: 'models $p(y \\mid x)$ directly', correct: false, feedback: 'That is the discriminative approach.' },
+        { text: 'has no probabilistic interpretation', correct: false, feedback: 'It is fully probabilistic.' },
+        { text: 'can only handle two classes', correct: false, feedback: 'Generative classifiers handle many classes.' }
       ]},
-      { stem: 'The normal equations give the least-squares solution as\u2026', options: [
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: true, feedback: 'Correct.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}\\mathbf{X}^\\top)^{-1}\\mathbf{y}^\\top\\mathbf{X}$', correct: false, feedback: 'Wrong shapes and order.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^{-1}\\mathbf{y}$', correct: false, feedback: '$X$ is generally not square or invertible.' }
+      { stem: 'Unlike linear regression, the logistic objective (cross-entropy / negative log-likelihood) is minimized by\u2026', options: [
+        { text: 'iterative optimization (gradient descent or Newton/IRLS); there is no closed form', correct: true, feedback: 'Correct \u2014 no closed form, so we optimize iteratively (what "Show MLE fit" runs).' },
+        { text: 'the normal equations $\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'That is the linear-regression closed form (Week 1).' },
+        { text: 'sorting the data by $x$', correct: false, feedback: 'Sorting does not fit a model.' },
+        { text: 'a single matrix inverse of the labels', correct: false, feedback: 'There is no such closed form for logistic regression.' }
       ]},
-      { stem: 'Extending the model with polynomial or basis features keeps it a <em>linear</em> model because\u2026', options: [
-        { text: 'the fitted curve is still a straight line', correct: false, feedback: 'The curve can bend.' },
-        { text: 'it is linear in the parameters, even if nonlinear in the inputs', correct: true, feedback: 'Correct \u2014 linearity refers to the parameters.' },
-        { text: 'only degree-1 features are allowed', correct: false, feedback: 'Higher-degree features are exactly the point.' },
-        { text: 'the data must be linearly separable', correct: false, feedback: 'That is a classification notion, not relevant here.' }
+      { stem: 'Why not just fit the 0/1 labels with ordinary least squares?', options: [
+        { text: 'squared error is the wrong likelihood for a binary outcome; cross-entropy is the proper objective and keeps predictions in $(0,1)$', correct: true, feedback: 'Correct \u2014 cross-entropy matches the Bernoulli likelihood; least squares on labels is poorly behaved.' },
+        { text: 'least squares cannot be computed on binary data', correct: false, feedback: 'It can be computed \u2014 it is just inappropriate.' },
+        { text: 'least squares always overfits', correct: false, feedback: 'Not the issue here.' },
+        { text: 'there is no difference; they give the same fit', correct: false, feedback: 'They give different, and for classification worse, fits.' }
       ]},
-      { stem: 'Your fitted slope is about 0.8 mmHg per year. The best interpretation is\u2026', options: [
-        { text: 'a one-year-older patient is <em>caused</em> to have 0.8 mmHg higher BP', correct: false, feedback: 'A regression slope is association, not causation.' },
-        { text: 'on average, patients one year older have ~0.8 mmHg higher BP in this sample', correct: true, feedback: 'Correct \u2014 an average association within the sample.' },
-        { text: 'every patient\u2019s BP rises 0.8 mmHg each year', correct: false, feedback: 'It is an average trend, not an individual law.' },
-        { text: 'age explains 70% of the variation in BP', correct: false, feedback: 'That would be $R^2$, a different quantity.' }
+      { stem: 'The \u201clink function\u201d in logistic regression\u2026', options: [
+        { text: 'connects the linear predictor to the probability \u2014 the logit (log-odds) is the link, the sigmoid its inverse', correct: true, feedback: 'Correct \u2014 $\\mathrm{logit}(p)=\\log\\frac{p}{1-p}$ is linear in $x$; the sigmoid maps back.' },
+        { text: 'is the loss function', correct: false, feedback: 'The link relates predictor to probability; the loss is separate.' },
+        { text: 'is the learning rate', correct: false, feedback: 'That is an optimizer setting.' },
+        { text: 'is the prior over the weights', correct: false, feedback: 'No \u2014 that would be regularization.' }
       ]},
-      { stem: 'On a dataset whose true relationship curves sharply, the best straight-line fit will\u2026', options: [
-        { text: 'capture the pattern perfectly once MSE is minimized', correct: false, feedback: 'A line cannot bend.' },
-        { text: 'underfit \u2014 systematically miss the curvature, leaving structured residuals', correct: true, feedback: 'Correct \u2014 too rigid for the pattern.' },
-        { text: 'overfit the curvature', correct: false, feedback: 'Overfitting is excess flexibility; a line is too rigid.' },
-        { text: 'be undefined because the relationship is nonlinear', correct: false, feedback: 'The line is still defined, just a poor fit.' }
+      { stem: 'Increasing the magnitude of the steepness $w_1$ makes the sigmoid\u2026', options: [
+        { text: 'steeper \u2014 predictions become more confident (closer to 0 or 1) near the boundary', correct: true, feedback: 'Correct \u2014 larger $|w_1|$ sharpens the transition; the model is more decisive.' },
+        { text: 'flatter', correct: false, feedback: 'That is decreasing $|w_1|$.' },
+        { text: 'shift left or right without changing shape', correct: false, feedback: 'That is the role of $w_0$.' },
+        { text: 'vertical everywhere', correct: false, feedback: 'It steepens but stays a smooth S-curve.' }
       ]},
-      { stem: 'Moving from regression to <em>linear classification</em>, the fitted line is used to\u2026', options: [
-        { text: 'predict a continuous output directly', correct: false, feedback: 'That is regression.' },
-        { text: 'define a decision boundary separating classes', correct: true, feedback: 'Correct.' },
-        { text: 'minimize squared error against labels with no other change', correct: false, feedback: 'Plain least squares on labels is a weak classifier; the boundary is the point.' },
-        { text: 'cluster the points into groups', correct: false, feedback: 'Clustering is unsupervised; classification uses labels.' }
+      { stem: 'In 1-D the decision threshold is $x^\\* = -w_0/w_1$. Changing the bias $w_0$ primarily\u2026', options: [
+        { text: 'shifts the boundary left/right along $x$', correct: true, feedback: 'Correct \u2014 $w_0$ translates the boundary; $w_1$ sets its steepness.' },
+        { text: 'changes the steepness of the curve', correct: false, feedback: 'That is $w_1$.' },
+        { text: 'flips which class is which', correct: false, feedback: 'The sign of $w_1$ does that, not $w_0$.' },
+        { text: 'has no effect', correct: false, feedback: 'It directly moves the threshold.' }
       ]},
-      { stem: 'Two features in your design matrix are almost perfectly correlated. The likely effect is\u2026', options: [
-        { text: '$\\mathbf{X}^\\top\\mathbf{X}$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
-        { text: 'no effect; least squares handles any features', correct: false, feedback: 'Collinearity genuinely destabilizes the fit.' },
-        { text: 'MSE necessarily increases', correct: false, feedback: 'The fit can look fine while coefficients are unreliable.' },
-        { text: 'the model becomes nonlinear', correct: false, feedback: 'Collinearity does not change linearity.' }
+      { stem: 'If the two classes were perfectly separable, the logistic-regression MLE weights\u2026', options: [
+        { text: 'diverge toward infinity (probabilities pushed to exactly 0/1) \u2014 regularization is needed', correct: true, feedback: 'Correct \u2014 separability has no finite MLE; this is why the tool\u2019s data overlaps and why a prior/ridge helps.' },
+        { text: 'settle at a unique finite optimum', correct: false, feedback: 'Separability removes the finite optimum.' },
+        { text: 'become exactly zero', correct: false, feedback: 'The opposite \u2014 they grow without bound.' },
+        { text: 'are undefined and the model cannot be built', correct: false, feedback: 'Regularization makes it well-posed.' }
       ]},
-      { stem: 'Which of these is NOT a linear model (not linear in the parameters $w_0, w_1, w_2$)?', options: [
-        { text: '$f = w_0 + w_1 x + w_2 x^3$', correct: false, feedback: 'Linear in the parameters; $x^3$ is just a fixed feature.' },
-        { text: '$f = w_0 + \\cos(w_1 x) + w_2 x^2$', correct: true, feedback: 'Correct \u2014 $w_1$ sits inside $\\cos$, so it is nonlinear in a parameter.' },
-        { text: '$f = w_0 - w_1 x - w_2 x^2$', correct: false, feedback: 'Linear in the parameters.' },
-        { text: '$f = (\\sqrt{w_0}+x)(\\sqrt{w_0}-x) + w_1 - w_2$', correct: false, feedback: 'Expands to $w_0 - x^2 + w_1 - w_2$: linear in the parameters.' }
+      { stem: 'A generative model with two Gaussian class-conditionals sharing a common variance produces a posterior $p(y{=}1 \\mid x)$ that is exactly\u2026', options: [
+        { text: 'logistic (linear in $x$) \u2014 the generative and discriminative views meet', correct: true, feedback: 'Correct \u2014 shared-variance Gaussians imply a logistic posterior; the bridge between approaches.' },
+        { text: 'quadratic in $x$', correct: false, feedback: 'Only if the variances differ (then the boundary is quadratic).' },
+        { text: 'a step function', correct: false, feedback: 'The posterior is smooth.' },
+        { text: 'uniform', correct: false, feedback: 'No \u2014 it is a logistic curve.' }
       ]},
-      { stem: 'Least-squares estimates equal maximum-likelihood estimates when you assume\u2026', options: [
-        { text: 'the targets are uniformly distributed', correct: false, feedback: 'No.' },
-        { text: 'the noise around the line is i.i.d. Gaussian with constant variance', correct: true, feedback: 'Correct \u2014 minimizing squared error equals maximizing the Gaussian likelihood.' },
-        { text: 'the features are mutually independent', correct: false, feedback: 'That concerns collinearity, not the LS\u2013MLE link.' },
-        { text: 'the parameters have a Gaussian prior', correct: false, feedback: 'That gives MAP / ridge regression, not plain MLE.' }
+      { stem: 'A genuine tradeoff between the two approaches:', options: [
+        { text: 'generative models can use $p(x)$, handle missing features, and sometimes need less data, but depend on modeling $p(x\\mid y)$ correctly; discriminative often predicts better when those assumptions are wrong', correct: true, feedback: 'Correct \u2014 generative buys a model of the data (and its assumptions); discriminative targets the boundary directly.' },
+        { text: 'discriminative models can generate new data; generative cannot', correct: false, feedback: 'Backwards \u2014 generative models can sample new data.' },
+        { text: 'generative models never use Bayes\u2019 rule', correct: false, feedback: 'Bayes\u2019 rule is exactly how they classify.' },
+        { text: 'they always give identical predictions', correct: false, feedback: 'They can differ, especially under model misspecification.' }
       ]},
-      { stem: 'The closed-form least-squares fit is obtained by\u2026', options: [
-        { text: 'running gradient descent to convergence', correct: false, feedback: 'A valid numerical route, but a closed form exists here.' },
-        { text: 'taking partial derivatives of the loss w.r.t. each parameter, setting them to zero, and solving', correct: true, feedback: 'Correct.' },
-        { text: 'inverting the data matrix $X$ directly', correct: false, feedback: '$X$ is generally not square or invertible.' },
-        { text: 'maximizing the loss', correct: false, feedback: 'We minimize the loss, not maximize it.' }
+      { stem: 'The model outputs $p(y{=}1 \\mid x) = 0.7$ for a patient. This means\u2026', options: [
+        { text: 'the estimated probability the patient is malignant is 0.7 \u2014 a graded probability, not a hard label', correct: true, feedback: 'Correct \u2014 turning it into a 0/1 call requires choosing a threshold.' },
+        { text: 'the patient is definitely malignant', correct: false, feedback: 'That is thresholding to a hard label, discarding the uncertainty.' },
+        { text: '70% of patients this size are malignant in the data', correct: false, feedback: 'It is the model\u2019s estimate, not a raw data frequency.' },
+        { text: 'the model is 70% accurate', correct: false, feedback: 'That conflates a single prediction with overall accuracy.' }
       ]}
     ]
   };

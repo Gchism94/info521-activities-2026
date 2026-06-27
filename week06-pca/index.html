@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Week 1 · The Linear Model — INFO 521</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+  <div class="pl-container">
+    <h1>The linear model: least squares by hand</h1>
+    <p class="pl-subtitle">
+      Each point is a patient: age on the x-axis, resting systolic blood pressure on the
+      y-axis. Drag the endpoints of the line, or use the sliders, to fit it by eye. Watch
+      the residuals and the loss respond, then compare your fit to the least-squares optimum.
+    </p>
+
+    <div class="pl-eq">
+      <div>$$\mathcal{L} = \frac{1}{N}\sum_{n=1}^{N}\bigl(y_n - (w_0 + w_1 x_n)\bigr)^2$$</div>
+      <div class="pl-eq-note">minimized by</div>
+      <div>$$\hat{w} = (X^\top X)^{-1} X^\top y$$</div>
+    </div>
+
+    <div class="pl-panel">
+      <div id="chart"></div>
+    </div>
+
+    <div class="pl-legend" aria-hidden="true">
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Patients</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Your fit</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>Least squares</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>Residuals</span>
+      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#D55E00;"></span>Outlier</span>
+    </div>
+
+    <div class="pl-controls">
+      <div class="pl-controls-row">
+        <div class="pl-control">
+          <label for="rng-w0">Intercept $w_0$</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-w0" aria-label="Intercept w0">
+            <input type="number" id="num-w0" aria-label="Intercept w0 value">
+          </div>
+        </div>
+        <div class="pl-control">
+          <label for="rng-w1">Slope $w_1$</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-w1" aria-label="Slope w1">
+            <input type="number" id="num-w1" aria-label="Slope w1 value">
+          </div>
+        </div>
+      </div>
+      <div class="pl-btns">
+        <button class="pl-btn" id="btn-ls" type="button" aria-pressed="false">Show least-squares solution</button>
+        <button class="pl-btn" id="btn-outlier" type="button" aria-pressed="false">Add outlier</button>
+        <button class="pl-btn" id="btn-reset" type="button">Reset</button>
+      </div>
+    </div>
+
+    <div class="pl-info">
+      <div class="pl-info-grid">
+        <div class="pl-cell"><div class="pl-cell-label">Intercept $w_0$</div><div class="pl-cell-value" id="val-w0">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Slope $w_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Your loss (MSE)</div><div class="pl-cell-value" id="val-mse">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Least-squares MSE</div><div class="pl-cell-value" id="val-lsmse">—</div></div>
+      </div>
+    </div>
+
+    <div id="quiz"></div>
+
+    <p class="pl-attribution">INFO 521 · University of Arizona · built with assistance from Claude</p>
+  </div>
+
+  <script src="../shared/viz-helpers.js"></script>
+  <script src="../shared/quiz-engine.js"></script>
+  <script src="./week06.js"></script>
+</body>
+</html>

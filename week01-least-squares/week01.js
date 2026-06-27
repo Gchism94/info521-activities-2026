@@ -48,10 +48,10 @@
         { text: 'Outliers are explicitly up-weighted in the normal equations', correct: false, feedback: 'There is no explicit weighting; the squaring does it.' }
       ]},
       { stem: 'The normal equations give the least-squares solution as\u2026', options: [
-        { text: '$\\hat{w} = (X^\\top X)^{-1} X^\\top y$', correct: true, feedback: 'Correct.' },
-        { text: '$\\hat{w} = X^\\top y$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
-        { text: '$\\hat{w} = (X X^\\top)^{-1} y^\\top X$', correct: false, feedback: 'Wrong shapes and order.' },
-        { text: '$\\hat{w} = X^{-1} y$', correct: false, feedback: '$X$ is generally not square or invertible.' }
+        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: true, feedback: 'Correct.' },
+        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
+        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}\\mathbf{X}^\\top)^{-1}\\mathbf{y}^\\top\\mathbf{X}$', correct: false, feedback: 'Wrong shapes and order.' },
+        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^{-1}\\mathbf{y}$', correct: false, feedback: '$X$ is generally not square or invertible.' }
       ]},
       { stem: 'Extending the model with polynomial or basis features keeps it a <em>linear</em> model because\u2026', options: [
         { text: 'the fitted curve is still a straight line', correct: false, feedback: 'The curve can bend.' },
@@ -78,7 +78,7 @@
         { text: 'cluster the points into groups', correct: false, feedback: 'Clustering is unsupervised; classification uses labels.' }
       ]},
       { stem: 'Two features in your design matrix are almost perfectly correlated. The likely effect is\u2026', options: [
-        { text: '$X^\\top X$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
+        { text: '$\\mathbf{X}^\\top\\mathbf{X}$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
         { text: 'no effect; least squares handles any features', correct: false, feedback: 'Collinearity genuinely destabilizes the fit.' },
         { text: 'MSE necessarily increases', correct: false, feedback: 'The fit can look fine while coefficients are unreliable.' },
         { text: 'the model becomes nonlinear', correct: false, feedback: 'Collinearity does not change linearity.' }

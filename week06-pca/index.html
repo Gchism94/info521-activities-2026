@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Week 1 · The Linear Model — INFO 521</title>
+  <title>Week 6 · Principal Component Analysis — INFO 521</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <link rel="stylesheet" href="../shared/shell.css">
@@ -14,17 +14,19 @@
 </head>
 <body>
   <div class="pl-container">
-    <h1>The linear model: least squares by hand</h1>
+    <h1>PCA: the direction that captures the most variance</h1>
     <p class="pl-subtitle">
-      Each point is a patient: age on the x-axis, resting systolic blood pressure on the
-      y-axis. Drag the endpoints of the line, or use the sliders, to fit it by eye. Watch
-      the residuals and the loss respond, then compare your fit to the least-squares optimum.
+      Each point is a patient — systolic vs. diastolic blood pressure, two correlated
+      measurements. Rotate the axis to find the direction along which the projected data
+      spreads the most; that direction is the first principal component. Watch how much of the
+      total variance a single component keeps, and how the reconstruction error shrinks as you
+      approach it. (PCA works on the data centered at its mean.)
     </p>
 
     <div class="pl-eq">
-      <div>$$\mathcal{L} = \frac{1}{N}\sum_{n=1}^{N}\bigl(y_n - (w_0 + w_1 x_n)\bigr)^2$$</div>
-      <div class="pl-eq-note">minimized by</div>
-      <div>$$\hat{w} = (X^\top X)^{-1} X^\top y$$</div>
+      <div>$$\mathrm{Var}(\mathbf{u}^\top \mathbf{x}) = \mathbf{u}^\top \boldsymbol{\Sigma}\, \mathbf{u}$$</div>
+      <div class="pl-eq-note">maximized over unit $\mathbf{u}$ by the top eigenvector of $\boldsymbol{\Sigma}$</div>
+      <div>$$\boldsymbol{\Sigma}\,\mathbf{u}_k = \lambda_k \mathbf{u}_k \qquad \text{variance explained}_k = \dfrac{\lambda_k}{\sum_j \lambda_j}$$</div>
     </div>
 
     <div class="pl-panel">
@@ -33,10 +35,11 @@
 
     <div class="pl-legend" aria-hidden="true">
       <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Patients</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Your fit</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>Least squares</span>
-      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>Residuals</span>
-      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#D55E00;"></span>Outlier</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#5f5e5a;"></span>Mean</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#CC79A7;"></span>Candidate axis</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>PC1</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#E69F00; border-top-style:dashed;"></span>PC2</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#5f5e5a; border-top-style:dotted;"></span>Projections / residuals</span>
     </div>
 
     <div class="pl-controls">

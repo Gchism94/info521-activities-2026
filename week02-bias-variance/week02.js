@@ -9,97 +9,100 @@
 
   // ---- CONFIG (the only block that changes per week) ----------------------
   var CONFIG = {
-    unitId: 'week01-least-squares',
-    unitNumber: 1,
-    token: 'LINMOD-7F3A',          // per-week secret revealed at >= mastery
-    masteryThreshold: 0.8,         // 80%
-    quizPerAttempt: null,          // null = use full bank
-    xLabel: 'Patient age (years)',
-    yLabel: 'Resting systolic BP (mmHg)',
-    data: [
-      [26, 112], [31, 118], [34, 120], [38, 121], [41, 126], [45, 124],
-      [48, 131], [52, 129], [55, 134], [58, 138], [61, 140], [64, 143],
-      [68, 147], [71, 149], [74, 154]
-    ],
-    outlier: [30, 168],            // young patient, very high BP
+    unitId: 'week02-bias-variance',
+    unitNumber: 2,
+    token: 'BIASVAR-2C9E',          // rotate per term; add to your week->token map
+    masteryThreshold: 0.8,
+    quizPerAttempt: null,
+    xLabel: 'Treatment dose (mg)',
+    yLabel: 'Response score',
+    trueFn: function (x) { return -0.032 * (x - 50) * (x - 50) + 100; }, // inverted-U, peak ~100 at dose 50
+    xDomain: [0, 100],
+    yDomain: [0, 120],
+    noiseSd: 8,                     // irreducible noise sigma
+    nTrain: 15,
+    nTest: 40,
+    degree: { min: 1, max: 9, step: 1, default: 1 },
+    lambda: { min: 0, max: 1000, step: 1, default: 0, scale: 'log' },
+    resamples: 20,                  // overlay count for the bias-variance view
     quiz: [
-      { stem: 'Least-squares fitting chooses the line that minimizes\u2026', options: [
-        { text: 'the sum of the residuals', correct: false, feedback: 'Positive and negative residuals cancel, so this can be near zero for a bad line.' },
-        { text: 'the sum of squared residuals \u2014 equivalently the mean squared error (the loss $\\mathcal{L}$)', correct: true, feedback: 'Correct. Squaring removes sign cancellation and gives a smooth objective.' },
-        { text: 'the largest single residual', correct: false, feedback: 'That is minimax (Chebyshev) fitting, a different objective.' },
-        { text: 'the number of points off the line', correct: false, feedback: 'Least squares uses distances, not counts.' }
+      { stem: 'The expected test error of a model decomposes into\u2026', options: [
+        { text: 'bias$^2$ + variance + irreducible noise', correct: true, feedback: 'Correct \u2014 squared bias, variance, and the irreducible $\\sigma^2$.' },
+        { text: 'bias + variance only', correct: false, feedback: 'Missing the irreducible noise term $\\sigma^2$.' },
+        { text: 'training error + test error', correct: false, feedback: 'That is not a decomposition of expected test error.' },
+        { text: 'variance \u2212 bias', correct: false, feedback: 'The terms add (with bias squared); they do not subtract.' }
       ]},
-      { stem: 'Why squared residuals rather than absolute residuals?', options: [
-        { text: 'Squaring forces the line through every point', correct: false, feedback: 'The line rarely passes through any single point.' },
-        { text: 'Squared error is differentiable everywhere and has a closed-form solution; it also penalizes large errors more', correct: true, feedback: 'Correct \u2014 smoothness plus the normal-equations solution.' },
-        { text: 'Absolute error cannot be computed numerically', correct: false, feedback: 'It can; it is just non-smooth at zero.' },
-        { text: 'Squaring is the only way to make residuals non-negative', correct: false, feedback: 'Absolute value also does that; it is not the distinguishing reason.' }
+      { stem: 'A straight line fit to a clearly curved dose\u2013response relationship has\u2026', options: [
+        { text: 'high bias, low variance (underfits)', correct: true, feedback: 'Correct \u2014 too rigid to capture the curve, but stable across samples.' },
+        { text: 'low bias, high variance', correct: false, feedback: 'That describes an over-flexible model, not a line.' },
+        { text: 'high bias, high variance', correct: false, feedback: 'A line is low-variance; it does not fan out across samples.' },
+        { text: 'low bias, low variance', correct: false, feedback: 'That would be an ideal fit, not an underfitting line.' }
       ]},
-      { stem: 'You dragged the line and the loss (MSE) fell. This means\u2026', options: [
-        { text: 'every residual got smaller', correct: false, feedback: 'Total squared error fell; some individual residuals may have grown.' },
-        { text: 'the line now fits the data better in the least-squares sense', correct: true, feedback: 'Correct \u2014 lower MSE is exactly the least-squares notion of better.' },
-        { text: 'the line must now pass through every point', correct: false, feedback: 'Lower MSE does not imply a perfect fit.' },
-        { text: 'the slope must have increased', correct: false, feedback: 'MSE can fall from changing slope or intercept, either direction.' }
+      { stem: 'A degree-9 polynomial fit to 15 noisy points typically has\u2026', options: [
+        { text: 'low bias, high variance (overfits)', correct: true, feedback: 'Correct \u2014 flexible enough to chase noise; wildly different fits per sample.' },
+        { text: 'high bias, low variance', correct: false, feedback: 'That is underfitting \u2014 the opposite problem.' },
+        { text: 'zero test error', correct: false, feedback: 'Train error is near zero, but test error is large.' },
+        { text: 'equal train and test error', correct: false, feedback: 'The whole point is the gap between them.' }
       ]},
-      { stem: 'After "Add outlier," the least-squares line shifts noticeably toward the new point. Why?', options: [
-        { text: 'Least squares ignores points far from the line', correct: false, feedback: 'The opposite \u2014 far points dominate.' },
-        { text: 'Squared error grows with the square of the residual, so a far point contributes a large penalty and pulls the fit', correct: true, feedback: 'Correct \u2014 sensitivity to outliers is a property of squared loss.' },
-        { text: 'Adding a point changes N, and that is what tilts the line', correct: false, feedback: 'N changes, but that is not why the line tilts toward the outlier.' },
-        { text: 'Outliers are explicitly up-weighted in the normal equations', correct: false, feedback: 'There is no explicit weighting; the squaring does it.' }
+      { stem: 'Overlaying fits from 20 resampled training sets, the lines fan out widely at high degree. That spread pictures\u2026', options: [
+        { text: 'variance', correct: true, feedback: 'Correct \u2014 variance is how much the fitted function changes across samples.' },
+        { text: 'bias', correct: false, feedback: 'Bias is the gap between the average fit and the truth, not the spread.' },
+        { text: 'irreducible noise', correct: false, feedback: 'That is the scatter of the data points themselves.' },
+        { text: 'training error', correct: false, feedback: 'Training error is a number per fit, not the spread across fits.' }
       ]},
-      { stem: 'The normal equations give the least-squares solution as\u2026', options: [
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: true, feedback: 'Correct.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}\\mathbf{X}^\\top)^{-1}\\mathbf{y}^\\top\\mathbf{X}$', correct: false, feedback: 'Wrong shapes and order.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^{-1}\\mathbf{y}$', correct: false, feedback: '$X$ is generally not square or invertible.' }
+      { stem: 'The gap between the average of those 20 fits and the true curve pictures\u2026', options: [
+        { text: 'bias', correct: true, feedback: 'Correct \u2014 bias is the systematic error of the average model.' },
+        { text: 'variance', correct: false, feedback: 'Variance is their spread, not their average\u2019s offset.' },
+        { text: '$\\lambda$', correct: false, feedback: '$\\lambda$ is the regularization strength, not an error component.' },
+        { text: 'test error', correct: false, feedback: 'Test error combines bias, variance, and noise.' }
       ]},
-      { stem: 'Extending the model with polynomial or basis features keeps it a <em>linear</em> model because\u2026', options: [
-        { text: 'the fitted curve is still a straight line', correct: false, feedback: 'The curve can bend.' },
-        { text: 'it is linear in the parameters, even if nonlinear in the inputs', correct: true, feedback: 'Correct \u2014 linearity refers to the parameters.' },
-        { text: 'only degree-1 features are allowed', correct: false, feedback: 'Higher-degree features are exactly the point.' },
-        { text: 'the data must be linearly separable', correct: false, feedback: 'That is a classification notion, not relevant here.' }
+      { stem: 'Increasing the ridge penalty $\\lambda$\u2026', options: [
+        { text: 'shrinks the coefficients, lowering variance but raising bias', correct: true, feedback: 'Correct \u2014 regularization trades variance for bias.' },
+        { text: 'increases variance and lowers bias', correct: false, feedback: 'That is reducing regularization, not increasing it.' },
+        { text: 'has no effect on the fit', correct: false, feedback: '$\\lambda$ directly penalizes large weights.' },
+        { text: 'removes the irreducible error', correct: false, feedback: 'Nothing removes $\\sigma^2$.' }
       ]},
-      { stem: 'Your fitted slope is about 0.8 mmHg per year. The best interpretation is\u2026', options: [
-        { text: 'a one-year-older patient is <em>caused</em> to have 0.8 mmHg higher BP', correct: false, feedback: 'A regression slope is association, not causation.' },
-        { text: 'on average, patients one year older have ~0.8 mmHg higher BP in this sample', correct: true, feedback: 'Correct \u2014 an average association within the sample.' },
-        { text: 'every patient\u2019s BP rises 0.8 mmHg each year', correct: false, feedback: 'It is an average trend, not an individual law.' },
-        { text: 'age explains 70% of the variation in BP', correct: false, feedback: 'That would be $R^2$, a different quantity.' }
+      { stem: 'As $\\lambda \\to \\infty$, the ridge solution approaches\u2026', options: [
+        { text: 'a flat fit (coefficients $\\to 0$)', correct: true, feedback: 'Correct \u2014 the penalty dominates and all weights shrink toward zero.' },
+        { text: 'the ordinary least-squares fit', correct: false, feedback: 'That is the $\\lambda \\to 0$ limit.' },
+        { text: 'a perfect interpolation of the data', correct: false, feedback: 'The opposite \u2014 maximal shrinkage, not maximal flexibility.' },
+        { text: 'an undefined model', correct: false, feedback: 'It is well defined: the constant/mean fit.' }
       ]},
-      { stem: 'On a dataset whose true relationship curves sharply, the best straight-line fit will\u2026', options: [
-        { text: 'capture the pattern perfectly once MSE is minimized', correct: false, feedback: 'A line cannot bend.' },
-        { text: 'underfit \u2014 systematically miss the curvature, leaving structured residuals', correct: true, feedback: 'Correct \u2014 too rigid for the pattern.' },
-        { text: 'overfit the curvature', correct: false, feedback: 'Overfitting is excess flexibility; a line is too rigid.' },
-        { text: 'be undefined because the relationship is nonlinear', correct: false, feedback: 'The line is still defined, just a poor fit.' }
+      { stem: 'Setting $\\lambda = 0$ gives\u2026', options: [
+        { text: 'ordinary least squares (no penalty)', correct: true, feedback: 'Correct \u2014 with no penalty term it is plain least squares.' },
+        { text: 'a constant model', correct: false, feedback: 'That is the $\\lambda \\to \\infty$ limit.' },
+        { text: 'ridge with maximal shrinkage', correct: false, feedback: 'Zero penalty means no shrinkage.' },
+        { text: 'an undefined fit', correct: false, feedback: 'It is just the unregularized fit.' }
       ]},
-      { stem: 'Moving from regression to <em>linear classification</em>, the fitted line is used to\u2026', options: [
-        { text: 'predict a continuous output directly', correct: false, feedback: 'That is regression.' },
-        { text: 'define a decision boundary separating classes', correct: true, feedback: 'Correct.' },
-        { text: 'minimize squared error against labels with no other change', correct: false, feedback: 'Plain least squares on labels is a weak classifier; the boundary is the point.' },
-        { text: 'cluster the points into groups', correct: false, feedback: 'Clustering is unsupervised; classification uses labels.' }
+      { stem: 'As polynomial degree increases, training and test error typically\u2026', options: [
+        { text: 'training error keeps falling; test error falls then rises (U-shaped)', correct: true, feedback: 'Correct \u2014 the classic generalization gap opening up.' },
+        { text: 'both fall monotonically', correct: false, feedback: 'Test error eventually rises as the model overfits.' },
+        { text: 'both rise', correct: false, feedback: 'Training error falls with added flexibility.' },
+        { text: 'training error rises; test error falls', correct: false, feedback: 'Backwards \u2014 more flexibility lowers training error.' }
       ]},
-      { stem: 'Two features in your design matrix are almost perfectly correlated. The likely effect is\u2026', options: [
-        { text: '$\\mathbf{X}^\\top\\mathbf{X}$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
-        { text: 'no effect; least squares handles any features', correct: false, feedback: 'Collinearity genuinely destabilizes the fit.' },
-        { text: 'MSE necessarily increases', correct: false, feedback: 'The fit can look fine while coefficients are unreliable.' },
-        { text: 'the model becomes nonlinear', correct: false, feedback: 'Collinearity does not change linearity.' }
+      { stem: 'Collecting more training data primarily\u2026', options: [
+        { text: 'reduces variance (fits cluster tighter); it will not fix an underfitting model', correct: true, feedback: 'Correct \u2014 more data tightens variance but cannot rescue a too-rigid model.' },
+        { text: 'reduces the bias of an underfitting model', correct: false, feedback: 'A model too simple stays biased no matter how much data you add.' },
+        { text: 'removes the irreducible noise', correct: false, feedback: '$\\sigma^2$ is fixed by the data-generating process.' },
+        { text: 'always lowers training error', correct: false, feedback: 'Training error often rises slightly with more points.' }
       ]},
-      { stem: 'Which of these is NOT a linear model (not linear in the parameters $w_0, w_1, w_2$)?', options: [
-        { text: '$f = w_0 + w_1 x + w_2 x^3$', correct: false, feedback: 'Linear in the parameters; $x^3$ is just a fixed feature.' },
-        { text: '$f = w_0 + \\cos(w_1 x) + w_2 x^2$', correct: true, feedback: 'Correct \u2014 $w_1$ sits inside $\\cos$, so it is nonlinear in a parameter.' },
-        { text: '$f = w_0 - w_1 x - w_2 x^2$', correct: false, feedback: 'Linear in the parameters.' },
-        { text: '$f = (\\sqrt{w_0}+x)(\\sqrt{w_0}-x) + w_1 - w_2$', correct: false, feedback: 'Expands to $w_0 - x^2 + w_1 - w_2$: linear in the parameters.' }
+      { stem: 'The irreducible error in $y = f(\\mathbf{x}) + \\epsilon$ comes from\u2026', options: [
+        { text: 'the noise variance $\\sigma^2$ \u2014 no model can beat it', correct: true, feedback: 'Correct \u2014 a floor set by the data, not the model.' },
+        { text: 'choosing too low a degree', correct: false, feedback: 'That is bias, which is reducible.' },
+        { text: 'choosing too high a degree', correct: false, feedback: 'That is variance, which is reducible.' },
+        { text: 'not using regularization', correct: false, feedback: 'Regularization cannot remove $\\sigma^2$.' }
       ]},
-      { stem: 'Least-squares estimates equal maximum-likelihood estimates when you assume\u2026', options: [
-        { text: 'the targets are uniformly distributed', correct: false, feedback: 'No.' },
-        { text: 'the noise around the line is i.i.d. Gaussian with constant variance', correct: true, feedback: 'Correct \u2014 minimizing squared error equals maximizing the Gaussian likelihood.' },
-        { text: 'the features are mutually independent', correct: false, feedback: 'That concerns collinearity, not the LS\u2013MLE link.' },
-        { text: 'the parameters have a Gaussian prior', correct: false, feedback: 'That gives MAP / ridge regression, not plain MLE.' }
+      { stem: 'Fitting linear regression by maximum likelihood under $\\mathcal{N}(y \\mid \\mathbf{w}^\\top\\mathbf{x}, \\sigma^2)$ is equivalent to\u2026', options: [
+        { text: 'minimizing the mean squared error', correct: true, feedback: 'Correct \u2014 Gaussian-noise MLE is exactly least squares (the Week 1 link).' },
+        { text: 'minimizing the absolute error', correct: false, feedback: 'That corresponds to Laplace noise, not Gaussian.' },
+        { text: 'maximizing the margin', correct: false, feedback: 'That is the SVM objective.' },
+        { text: 'minimizing $\\lambda$', correct: false, feedback: '$\\lambda$ is a hyperparameter, not the likelihood objective.' }
       ]},
-      { stem: 'The closed-form least-squares fit is obtained by\u2026', options: [
-        { text: 'running gradient descent to convergence', correct: false, feedback: 'A valid numerical route, but a closed form exists here.' },
-        { text: 'taking partial derivatives of the loss w.r.t. each parameter, setting them to zero, and solving', correct: true, feedback: 'Correct.' },
-        { text: 'inverting the data matrix $X$ directly', correct: false, feedback: '$X$ is generally not square or invertible.' },
-        { text: 'maximizing the loss', correct: false, feedback: 'We minimize the loss, not maximize it.' }
+      { stem: 'Ridge changes the normal equations to $\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X} + \\lambda\\mathbf{I})^{-1}\\mathbf{X}^\\top\\mathbf{y}$. The $\\lambda\\mathbf{I}$ term\u2026', options: [
+        { text: 'makes $\\mathbf{X}^\\top\\mathbf{X}$ better-conditioned / invertible, stabilizing the solution', correct: true, feedback: 'Correct \u2014 it fixes the near-singular $\\mathbf{X}^\\top\\mathbf{X}$ from collinearity (Week 1\u2019s last item).' },
+        { text: 'has no effect when features are correlated', correct: false, feedback: 'Correlated features are exactly when it helps most.' },
+        { text: 'makes the model nonlinear', correct: false, feedback: 'The model stays linear in the parameters.' },
+        { text: 'removes the need for data', correct: false, feedback: 'You still fit to data; it only regularizes.' }
       ]}
     ]
   };

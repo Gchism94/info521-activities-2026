@@ -39,6 +39,18 @@ deploy.sh      stages a flat dist/ for GitHub Pages (does NOT publish)
   `prefers-reduced-motion` respected.
 - Topic-named week directories (`week01-least-squares`), not lecture numbers.
 
+## Notation
+
+Standardize on **PML (Murphy) notation** — it matches the Spring 2026 readings. Keep every
+week consistent so students don't have to re-learn symbols:
+
+- **Targets** `y_n`; **inputs** `x_n` / **design matrix** `\mathbf{X}`.
+- **Weights** `w_0, w_1` (scalar) and `\mathbf{w}` (vector); **estimate** `\hat{\mathbf{w}}`.
+- **Loss** `\mathcal{L}` = mean squared error.
+- **Gaussian** written `\mathcal{N}(y \mid \mu, \sigma^2)`.
+- **Bold vectors/matrices, plain scalars** (e.g. `\mathbf{X}`, `\mathbf{w}` bold; `w_0`,
+  `w_1`, `x`, `\mathcal{L}` plain).
+
 ## The token
 
 Each week's CONFIG holds a `token` revealed only at `masteryThreshold` (0.80). It is

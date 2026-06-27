@@ -9,97 +9,98 @@
 
   // ---- CONFIG (the only block that changes per week) ----------------------
   var CONFIG = {
-    unitId: 'week01-least-squares',
-    unitNumber: 1,
-    token: 'LINMOD-7F3A',          // per-week secret revealed at >= mastery
-    masteryThreshold: 0.8,         // 80%
-    quizPerAttempt: null,          // null = use full bank
-    xLabel: 'Patient age (years)',
-    yLabel: 'Resting systolic BP (mmHg)',
+    unitId: 'week06-pca',
+    unitNumber: 6,
+    token: 'PCA-9W4T',              // rotate per term; add to your week->token map
+    masteryThreshold: 0.8,
+    quizPerAttempt: null,
+    xLabel: 'Systolic BP (mmHg)',
+    yLabel: 'Diastolic BP (mmHg)',
+    theta: { min: 0, max: 180, step: 1, default: 0 },  // candidate axis angle, degrees
+    // 24 patients, two correlated measurements
     data: [
-      [26, 112], [31, 118], [34, 120], [38, 121], [41, 126], [45, 124],
-      [48, 131], [52, 129], [55, 134], [58, 138], [61, 140], [64, 143],
-      [68, 147], [71, 149], [74, 154]
+      [112,72],[116,74],[120,78],[118,75],[124,80],[128,82],[122,79],[132,85],
+      [130,83],[136,88],[140,90],[134,86],[144,92],[148,95],[142,91],[152,97],
+      [150,96],[156,99],[160,102],[154,98],[164,104],[158,100],[168,107],[146,93]
     ],
-    outlier: [30, 168],            // young patient, very high BP
     quiz: [
-      { stem: 'Least-squares fitting chooses the line that minimizes\u2026', options: [
-        { text: 'the sum of the residuals', correct: false, feedback: 'Positive and negative residuals cancel, so this can be near zero for a bad line.' },
-        { text: 'the sum of squared residuals \u2014 equivalently the mean squared error (the loss $\\mathcal{L}$)', correct: true, feedback: 'Correct. Squaring removes sign cancellation and gives a smooth objective.' },
-        { text: 'the largest single residual', correct: false, feedback: 'That is minimax (Chebyshev) fitting, a different objective.' },
-        { text: 'the number of points off the line', correct: false, feedback: 'Least squares uses distances, not counts.' }
+      { stem: 'PCA\u2019s first step is to subtract each feature\u2019s mean (center the data). This matters because\u2026', options: [
+        { text: 'the components then describe variance about the mean and pass through the centroid, not the origin', correct: true, feedback: 'Correct \u2014 centering ensures the components capture spread about the data\u2019s center.' },
+        { text: 'it puts all features on the same scale', correct: false, feedback: 'That is standardization \u2014 a separate, optional step.' },
+        { text: 'it removes outliers', correct: false, feedback: 'Centering does not remove points.' },
+        { text: 'it sorts the data', correct: false, feedback: 'Order is irrelevant to PCA.' }
       ]},
-      { stem: 'Why squared residuals rather than absolute residuals?', options: [
-        { text: 'Squaring forces the line through every point', correct: false, feedback: 'The line rarely passes through any single point.' },
-        { text: 'Squared error is differentiable everywhere and has a closed-form solution; it also penalizes large errors more', correct: true, feedback: 'Correct \u2014 smoothness plus the normal-equations solution.' },
-        { text: 'Absolute error cannot be computed numerically', correct: false, feedback: 'It can; it is just non-smooth at zero.' },
-        { text: 'Squaring is the only way to make residuals non-negative', correct: false, feedback: 'Absolute value also does that; it is not the distinguishing reason.' }
+      { stem: 'The first principal component (PC1) is the direction that\u2026', options: [
+        { text: 'maximizes the variance of the data projected onto it', correct: true, feedback: 'Correct \u2014 PC1 is the maximal-variance direction; rotate the axis in the tool to find it.' },
+        { text: 'minimizes the variance of the projections', correct: false, feedback: 'That would be the least-variance direction (PC2 in 2-D).' },
+        { text: 'is always parallel to the x-axis', correct: false, feedback: 'Only by coincidence.' },
+        { text: 'passes through the most data points', correct: false, feedback: 'PCA is about variance, not point counts.' }
       ]},
-      { stem: 'You dragged the line and the loss (MSE) fell. This means\u2026', options: [
-        { text: 'every residual got smaller', correct: false, feedback: 'Total squared error fell; some individual residuals may have grown.' },
-        { text: 'the line now fits the data better in the least-squares sense', correct: true, feedback: 'Correct \u2014 lower MSE is exactly the least-squares notion of better.' },
-        { text: 'the line must now pass through every point', correct: false, feedback: 'Lower MSE does not imply a perfect fit.' },
-        { text: 'the slope must have increased', correct: false, feedback: 'MSE can fall from changing slope or intercept, either direction.' }
+      { stem: 'PC1 also minimizes the total squared reconstruction (perpendicular) error. These two views are\u2026', options: [
+        { text: 'equivalent \u2014 total variance is fixed, so maximizing projected variance minimizes residual variance', correct: true, feedback: 'Correct \u2014 two faces of the same optimum (the tool shows both at once).' },
+        { text: 'contradictory', correct: false, feedback: 'They coincide exactly.' },
+        { text: 'equivalent only for uncorrelated features', correct: false, feedback: 'It holds always, by the fixed-total-variance argument.' },
+        { text: 'unrelated to PCA', correct: false, feedback: 'They are two derivations of PCA.' }
       ]},
-      { stem: 'After "Add outlier," the least-squares line shifts noticeably toward the new point. Why?', options: [
-        { text: 'Least squares ignores points far from the line', correct: false, feedback: 'The opposite \u2014 far points dominate.' },
-        { text: 'Squared error grows with the square of the residual, so a far point contributes a large penalty and pulls the fit', correct: true, feedback: 'Correct \u2014 sensitivity to outliers is a property of squared loss.' },
-        { text: 'Adding a point changes N, and that is what tilts the line', correct: false, feedback: 'N changes, but that is not why the line tilts toward the outlier.' },
-        { text: 'Outliers are explicitly up-weighted in the normal equations', correct: false, feedback: 'There is no explicit weighting; the squaring does it.' }
+      { stem: 'The principal components are the \u2026 of the covariance matrix $\\boldsymbol{\\Sigma}$, and the variance along each is the corresponding \u2026', options: [
+        { text: 'eigenvectors; eigenvalue', correct: true, feedback: 'Correct \u2014 PCs are eigenvectors of $\\boldsymbol{\\Sigma}$; eigenvalues give the variance along each.' },
+        { text: 'rows; determinant', correct: false, feedback: 'No \u2014 PCs come from the eigen-decomposition.' },
+        { text: 'columns; trace', correct: false, feedback: 'The trace is the total variance, not a per-axis value.' },
+        { text: 'inverses; rank', correct: false, feedback: 'Unrelated to PCA.' }
       ]},
-      { stem: 'The normal equations give the least-squares solution as\u2026', options: [
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}^\\top\\mathbf{X})^{-1}\\mathbf{X}^\\top\\mathbf{y}$', correct: true, feedback: 'Correct.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^\\top\\mathbf{y}$', correct: false, feedback: 'Missing the $(X^\\top X)^{-1}$ term.' },
-        { text: '$\\hat{\\mathbf{w}} = (\\mathbf{X}\\mathbf{X}^\\top)^{-1}\\mathbf{y}^\\top\\mathbf{X}$', correct: false, feedback: 'Wrong shapes and order.' },
-        { text: '$\\hat{\\mathbf{w}} = \\mathbf{X}^{-1}\\mathbf{y}$', correct: false, feedback: '$X$ is generally not square or invertible.' }
+      { stem: 'PC2 is\u2026', options: [
+        { text: 'orthogonal to PC1, capturing the most remaining variance', correct: true, feedback: 'Correct \u2014 components are mutually orthogonal; PC2 is the next-most-variance direction.' },
+        { text: 'parallel to PC1', correct: false, feedback: 'Components are orthogonal, not parallel.' },
+        { text: 'the mean of the data', correct: false, feedback: 'PC2 is a direction, not a point.' },
+        { text: 'always discarded noise', correct: false, feedback: 'In 2-D it is simply the second axis; whether to drop it is a separate choice.' }
       ]},
-      { stem: 'Extending the model with polynomial or basis features keeps it a <em>linear</em> model because\u2026', options: [
-        { text: 'the fitted curve is still a straight line', correct: false, feedback: 'The curve can bend.' },
-        { text: 'it is linear in the parameters, even if nonlinear in the inputs', correct: true, feedback: 'Correct \u2014 linearity refers to the parameters.' },
-        { text: 'only degree-1 features are allowed', correct: false, feedback: 'Higher-degree features are exactly the point.' },
-        { text: 'the data must be linearly separable', correct: false, feedback: 'That is a classification notion, not relevant here.' }
+      { stem: 'The fraction of variance explained by PC1 is\u2026', options: [
+        { text: '$\\lambda_1 / (\\lambda_1 + \\lambda_2)$ \u2014 its eigenvalue over the total', correct: true, feedback: 'Correct \u2014 variance explained is the eigenvalue divided by the trace.' },
+        { text: '$\\lambda_1 \\cdot \\lambda_2$', correct: false, feedback: 'Variance explained is a ratio, not a product.' },
+        { text: '$1/2$ always', correct: false, feedback: 'It depends on the data\u2019s structure.' },
+        { text: '$\\lambda_2 / \\lambda_1$', correct: false, feedback: 'That inverts the ratio.' }
       ]},
-      { stem: 'Your fitted slope is about 0.8 mmHg per year. The best interpretation is\u2026', options: [
-        { text: 'a one-year-older patient is <em>caused</em> to have 0.8 mmHg higher BP', correct: false, feedback: 'A regression slope is association, not causation.' },
-        { text: 'on average, patients one year older have ~0.8 mmHg higher BP in this sample', correct: true, feedback: 'Correct \u2014 an average association within the sample.' },
-        { text: 'every patient\u2019s BP rises 0.8 mmHg each year', correct: false, feedback: 'It is an average trend, not an individual law.' },
-        { text: 'age explains 70% of the variation in BP', correct: false, feedback: 'That would be $R^2$, a different quantity.' }
+      { stem: 'The two BP features here are strongly correlated. Projecting onto PC1 alone therefore\u2026', options: [
+        { text: 'retains most of the variance \u2014 an effective 2-D \u2192 1-D reduction with little loss', correct: true, feedback: 'Correct \u2014 correlated features concentrate variance in one direction, so one PC suffices.' },
+        { text: 'loses most of the information', correct: false, feedback: 'Correlation means one direction carries most of the variance.' },
+        { text: 'is impossible', correct: false, feedback: 'Projection onto a single component is exactly the point.' },
+        { text: 'is identical to keeping both components', correct: false, feedback: 'You still drop PC2\u2019s (small) variance.' }
       ]},
-      { stem: 'On a dataset whose true relationship curves sharply, the best straight-line fit will\u2026', options: [
-        { text: 'capture the pattern perfectly once MSE is minimized', correct: false, feedback: 'A line cannot bend.' },
-        { text: 'underfit \u2014 systematically miss the curvature, leaving structured residuals', correct: true, feedback: 'Correct \u2014 too rigid for the pattern.' },
-        { text: 'overfit the curvature', correct: false, feedback: 'Overfitting is excess flexibility; a line is too rigid.' },
-        { text: 'be undefined because the relationship is nonlinear', correct: false, feedback: 'The line is still defined, just a poor fit.' }
+      { stem: 'PCA is\u2026', options: [
+        { text: 'a linear, orthogonal, unsupervised transformation (uses only $\\mathbf{x}$, no labels)', correct: true, feedback: 'Correct \u2014 PCA rotates to axes of maximal variance, with no labels.' },
+        { text: 'a supervised classifier', correct: false, feedback: 'It uses no labels.' },
+        { text: 'a nonlinear embedding', correct: false, feedback: 'That describes methods like autoencoders / t-SNE.' },
+        { text: 'a clustering algorithm', correct: false, feedback: 'It reduces dimensions; it does not assign clusters.' }
       ]},
-      { stem: 'Moving from regression to <em>linear classification</em>, the fitted line is used to\u2026', options: [
-        { text: 'predict a continuous output directly', correct: false, feedback: 'That is regression.' },
-        { text: 'define a decision boundary separating classes', correct: true, feedback: 'Correct.' },
-        { text: 'minimize squared error against labels with no other change', correct: false, feedback: 'Plain least squares on labels is a weak classifier; the boundary is the point.' },
-        { text: 'cluster the points into groups', correct: false, feedback: 'Clustering is unsupervised; classification uses labels.' }
+      { stem: 'You can compute the principal components from\u2026', options: [
+        { text: 'the SVD of the centered data matrix, without explicitly forming $\\boldsymbol{\\Sigma}$ \u2014 often numerically preferable', correct: true, feedback: 'Correct \u2014 SVD of the centered data yields the PCs directly and is more numerically stable.' },
+        { text: 'sorting the rows of the data', correct: false, feedback: 'Sorting does nothing for PCA.' },
+        { text: 'inverting the data matrix', correct: false, feedback: 'The data matrix is generally not invertible.' },
+        { text: 'gradient descent on the labels', correct: false, feedback: 'PCA is unsupervised \u2014 there are no labels.' }
       ]},
-      { stem: 'Two features in your design matrix are almost perfectly correlated. The likely effect is\u2026', options: [
-        { text: '$\\mathbf{X}^\\top\\mathbf{X}$ becomes nearly singular, so coefficients become unstable / high-variance', correct: true, feedback: 'Correct \u2014 collinearity is a known failure mode.' },
-        { text: 'no effect; least squares handles any features', correct: false, feedback: 'Collinearity genuinely destabilizes the fit.' },
-        { text: 'MSE necessarily increases', correct: false, feedback: 'The fit can look fine while coefficients are unreliable.' },
-        { text: 'the model becomes nonlinear', correct: false, feedback: 'Collinearity does not change linearity.' }
+      { stem: 'PCA is sensitive to feature scaling because\u2026', options: [
+        { text: 'features with larger numeric variance dominate the components \u2014 standardize when features use different scales/units', correct: true, feedback: 'Correct \u2014 variance is scale-dependent; standardize across units (here both are mmHg, so it is already comparable).' },
+        { text: 'it ignores variance entirely', correct: false, feedback: 'Variance is exactly what PCA maximizes.' },
+        { text: 'scaling has no effect on the eigenvectors', correct: false, feedback: 'Rescaling features changes $\\boldsymbol{\\Sigma}$ and thus the components.' },
+        { text: 'it always standardizes internally', correct: false, feedback: 'You must standardize yourself when appropriate.' }
       ]},
-      { stem: 'Which of these is NOT a linear model (not linear in the parameters $w_0, w_1, w_2$)?', options: [
-        { text: '$f = w_0 + w_1 x + w_2 x^3$', correct: false, feedback: 'Linear in the parameters; $x^3$ is just a fixed feature.' },
-        { text: '$f = w_0 + \\cos(w_1 x) + w_2 x^2$', correct: true, feedback: 'Correct \u2014 $w_1$ sits inside $\\cos$, so it is nonlinear in a parameter.' },
-        { text: '$f = w_0 - w_1 x - w_2 x^2$', correct: false, feedback: 'Linear in the parameters.' },
-        { text: '$f = (\\sqrt{w_0}+x)(\\sqrt{w_0}-x) + w_1 - w_2$', correct: false, feedback: 'Expands to $w_0 - x^2 + w_1 - w_2$: linear in the parameters.' }
+      { stem: 'To decide how many components to keep, a common approach is\u2026', options: [
+        { text: 'the cumulative variance-explained / scree-plot elbow \u2014 keep enough PCs to reach a target %', correct: true, feedback: 'Correct \u2014 choose $k$ from the variance-explained curve (e.g., 95%).' },
+        { text: 'keep exactly one, always', correct: false, feedback: 'Sometimes one is too few.' },
+        { text: 'keep all of them, always', correct: false, feedback: 'That achieves no reduction.' },
+        { text: 'pick the number at random', correct: false, feedback: 'Selection is variance-driven, not random.' }
       ]},
-      { stem: 'Least-squares estimates equal maximum-likelihood estimates when you assume\u2026', options: [
-        { text: 'the targets are uniformly distributed', correct: false, feedback: 'No.' },
-        { text: 'the noise around the line is i.i.d. Gaussian with constant variance', correct: true, feedback: 'Correct \u2014 minimizing squared error equals maximizing the Gaussian likelihood.' },
-        { text: 'the features are mutually independent', correct: false, feedback: 'That concerns collinearity, not the LS\u2013MLE link.' },
-        { text: 'the parameters have a Gaussian prior', correct: false, feedback: 'That gives MAP / ridge regression, not plain MLE.' }
+      { stem: 'Rotating the projection axis, the projected variance is maximized exactly when the axis aligns with\u2026', options: [
+        { text: 'PC1 (the top eigenvector); the maximum value equals $\\lambda_1$', correct: true, feedback: 'Correct \u2014 the peak of projected variance is PC1, and its value is the largest eigenvalue.' },
+        { text: 'PC2', correct: false, feedback: 'PC2 is the minimum-variance direction in 2-D.' },
+        { text: 'the x-axis', correct: false, feedback: 'Only if PC1 happens to lie there.' },
+        { text: 'the mean', correct: false, feedback: 'The mean is a point, not a direction.' }
       ]},
-      { stem: 'The closed-form least-squares fit is obtained by\u2026', options: [
-        { text: 'running gradient descent to convergence', correct: false, feedback: 'A valid numerical route, but a closed form exists here.' },
-        { text: 'taking partial derivatives of the loss w.r.t. each parameter, setting them to zero, and solving', correct: true, feedback: 'Correct.' },
-        { text: 'inverting the data matrix $X$ directly', correct: false, feedback: '$X$ is generally not square or invertible.' },
-        { text: 'maximizing the loss', correct: false, feedback: 'We minimize the loss, not maximize it.' }
+      { stem: 'A limitation of PCA:', options: [
+        { text: 'it captures only linear directions of maximal variance \u2014 it can miss nonlinear structure, and max-variance is not always the most useful direction for a task', correct: true, feedback: 'Correct \u2014 PCA is linear and variance-driven; nonlinear methods (skipped this unit) address the first gap.' },
+        { text: 'it requires labeled data', correct: false, feedback: 'PCA is unsupervised.' },
+        { text: 'it only works on 2-D data', correct: false, feedback: 'It applies in any dimension.' },
+        { text: 'it always improves classification accuracy', correct: false, feedback: 'Dropping a low-variance but discriminative direction can hurt.' }
       ]}
     ]
   };

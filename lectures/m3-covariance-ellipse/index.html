@@ -44,6 +44,12 @@
     .lec-readout-eq { text-align: center; margin: 0.25rem 0; overflow-x: auto; }
     .lec-readout-note { font-size: 0.8rem; color: var(--pl-muted); text-align: center; margin-top: 0.4rem; }
 
+    /* Visually-hidden but screen-reader-available (tool-local; shell has none). */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
     @media (max-width: 700px) { .lec-viz { flex-direction: column; } }
   </style>
 
@@ -97,16 +103,32 @@
     </div>
 
     <!-- Two-panel viz -->
-    <div class="lec-viz">
+    <p class="sr-only" id="viz-summary">
+      Interactive figure with two panels. The left panel plots standardized age
+      against systolic blood pressure for the current design of N rows, with the
+      least-squares fit line. The right panel is the intercept (w0) versus slope
+      (w1) parameter plane, showing a 95 percent covariance ellipse — equal to
+      sigma-squared times the inverse of X-transpose-X — centered at the true
+      weights, which are fixed to the full-data fit. The N slider sets how many
+      rows form the design: larger N shrinks the ellipse (roughly as one over the
+      square root of N). The sigma-squared slider sets the noise variance: larger
+      sigma-squared enlarges the ellipse in proportion. The Resample button
+      regenerates the targets as the true weights times the inputs plus Gaussian
+      noise, refits the weights, and adds the estimate to an accumulating cloud of
+      points that fills the ellipse; Clear empties the cloud. The readout below
+      states the Fisher information and covariance matrices numerically and updates
+      as you change the controls.
+    </p>
+    <div class="lec-viz" role="group" aria-label="Covariance-ellipse visualization" aria-describedby="viz-summary">
       <div class="pl-panel">
         <div class="lec-panel-title">Data &amp; least-squares fit</div>
         <svg id="svg-left" viewBox="0 0 420 320" role="img"
-             aria-label="Left panel: scatter of standardized age versus systolic blood pressure with the least-squares fit line."></svg>
+             aria-label="Left panel: scatter of standardized age versus systolic blood pressure for the current N-row design, with its least-squares fit line."></svg>
       </div>
       <div class="pl-panel">
         <div class="lec-panel-title">Parameter plane &amp; covariance ellipse</div>
         <svg id="svg-right" viewBox="0 0 420 320" role="img"
-             aria-label="Right panel: the intercept-versus-slope plane with the covariance ellipse and resampled estimates."></svg>
+             aria-label="Right panel: the intercept-versus-slope plane with the 95 percent covariance ellipse centered at the true weights, plus the accumulating cloud of resampled estimates that fills it."></svg>
       </div>
     </div>
 
@@ -122,7 +144,7 @@
     <div class="pl-info">
       <div class="lec-readout-eq" id="readout-fisher">$$\mathcal{I} = \tfrac{1}{\sigma^2}\mathbf{X}^{\!\top}\mathbf{X}$$</div>
       <div class="lec-readout-eq" id="readout-cov">$$\mathrm{cov}\{\hat{\mathbf{w}}\} = \mathcal{I}^{-1}$$</div>
-      <div class="lec-readout-note" id="readout-note">Numeric matrices update with the controls (Step 3).</div>
+      <div class="lec-readout-note" id="readout-note" role="status" aria-live="polite">Numeric matrices update with the controls.</div>
     </div>
 
     <p class="pl-attribution">INFO 521 · University of Arizona · built with assistance from Claude</p>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3 · Covariance Ellipse &amp; Fisher Information — INFO 521</title>
+
+  <!-- Same CDN pins as the week modules: KaTeX 0.16.9 + (below) D3 v7.9.0 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <!-- Shared design system: CSS-variable theming + Okabe-Ito tokens + components -->
+  <link rel="stylesheet" href="../../shared/shell.css">
+
+  <!-- ===================================================================
+       lectures/ track theme layer (TOOL-LOCAL — shared/* is never edited).
+       shell.css is OS-preference-driven and light-default; lecture tools
+       default to DARK with a manual toggle (no localStorage). We re-drive the
+       SAME --pl-* variables here: dark on :root by default, light under
+       :root[data-theme="light"] (attribute specificity beats shell's
+       @media(prefers-color-scheme:dark) :root, so the toggle wins on any OS).
+       Okabe-Ito --ok-* data tokens are inherited from shell.css unchanged.
+       =================================================================== -->
+  <style>
+    :root {                      /* default dark (mirrors shell.css @media-dark) */
+      --pl-bg: #1a1a1a;   --pl-card: #2c2c2a;  --pl-panel: #333330; --pl-panel-2: #3a3a38;
+      --pl-text: #e5e5e5; --pl-muted: #b4b2a9; --pl-muted-2: #888780; --pl-border: #5f5e5a;
+      --pl-accent: #afa9ec; --pl-accent-2: #c4bff5; --pl-grid: rgba(255, 255, 255, 0.10);
+    }
+    :root[data-theme="light"] { /* light set (mirrors shell.css :root light) */
+      --pl-bg: #f5f5f5;   --pl-card: #ffffff;  --pl-panel: #f8f7f4; --pl-panel-2: #f1efe8;
+      --pl-text: #2c2c2a; --pl-muted: #5f5e5a; --pl-muted-2: #888780; --pl-border: #d3d1c7;
+      --pl-accent: #534ab7; --pl-accent-2: #4840a0; --pl-grid: rgba(0, 0, 0, 0.10);
+    }
+
+    /* ---- lectures/ track layout classes (tool-local; shell has no two-panel) */
+    .lec-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .lec-header h1 { margin-bottom: 0.4rem; }
+    #theme-toggle { flex-shrink: 0; font-size: 16px; line-height: 1; padding: 6px 10px; }
+
+    .lec-viz { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .lec-viz .pl-panel { flex: 1 1 320px; min-width: 300px; margin-bottom: 0; }
+    .lec-panel-title { font-size: 12px; color: var(--pl-muted); margin-bottom: 0.4rem; text-align: center; }
+    .lec-viz svg { width: 100%; height: auto; display: block; }
+
+    .lec-readout-eq { text-align: center; margin: 0.25rem 0; overflow-x: auto; }
+    .lec-readout-note { font-size: 0.8rem; color: var(--pl-muted); text-align: center; margin-top: 0.4rem; }
+
+    @media (max-width: 700px) { .lec-viz { flex-direction: column; } }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+  <div class="pl-container">
+    <div class="lec-header">
+      <h1>Covariance ellipses &amp; Fisher information</h1>
+      <button class="pl-btn pl-btn-small" id="theme-toggle" type="button"
+              aria-label="Toggle light and dark theme" aria-pressed="false"
+              title="Toggle light / dark (default: dark)">&#9788;</button>
+    </div>
+    <p class="pl-subtitle">
+      How tightly does the data pin down the fitted weights? Treat the full-data fit as the
+      true $\mathbf{w}$; the ellipse is the sampling spread of $\hat{\mathbf{w}}$, and
+      resampling fills it. Watch it shrink as $N$ grows and stretch with the noise $\sigma^2$.
+    </p>
+
+    <div class="pl-eq">
+      <div>$$\mathcal{I} \;=\; \tfrac{1}{\sigma^2}\,\mathbf{X}^{\!\top}\mathbf{X}
+            \qquad
+            \mathrm{cov}\{\hat{\mathbf{w}}\} \;=\; \sigma^2\!\left(\mathbf{X}^{\!\top}\mathbf{X}\right)^{-1} \;=\; \mathcal{I}^{-1}$$</div>
+      <div class="pl-eq-note">Fisher information and the parameter covariance it inverts to</div>
+    </div>
+
+    <!-- Controls (markup complete; wired in Step 3) -->
+    <div class="pl-controls">
+      <div class="pl-controls-row">
+        <div class="pl-control">
+          <label for="rng-n">Design size $N$ (subsample)</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-n" aria-label="Design size N">
+            <input type="number" id="num-n" aria-label="Design size N value">
+          </div>
+        </div>
+        <div class="pl-control">
+          <label for="rng-sigma2">Noise variance $\sigma^2$</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-sigma2" aria-label="Noise variance sigma squared">
+            <input type="number" id="num-sigma2" aria-label="Noise variance sigma squared value">
+          </div>
+        </div>
+      </div>
+      <div class="pl-btns">
+        <button class="pl-btn" id="btn-resample" type="button">Resample $\hat{\mathbf{w}}$</button>
+        <button class="pl-btn" id="btn-clear" type="button">Clear cloud</button>
+      </div>
+    </div>
+
+    <!-- Two-panel viz -->
+    <div class="lec-viz">
+      <div class="pl-panel">
+        <div class="lec-panel-title">Data &amp; least-squares fit</div>
+        <svg id="svg-left" viewBox="0 0 420 320" role="img"
+             aria-label="Left panel: scatter of standardized age versus systolic blood pressure with the least-squares fit line."></svg>
+      </div>
+      <div class="pl-panel">
+        <div class="lec-panel-title">Parameter plane &amp; covariance ellipse</div>
+        <svg id="svg-right" viewBox="0 0 420 320" role="img"
+             aria-label="Right panel: the intercept-versus-slope plane with the covariance ellipse and resampled estimates."></svg>
+      </div>
+    </div>
+
+    <div class="pl-legend" aria-hidden="true">
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:var(--ok-blue);"></span>Data points</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:var(--ok-vermillion);"></span>Least-squares fit</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:var(--ok-green); border-top-style:dashed;"></span>cov ellipse (95%)</span>
+      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:var(--ok-orange);"></span>Resampled $\hat{\mathbf{w}}$</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="background:var(--ok-purple); width:11px; height:11px; border:0;"></span>true $\mathbf{w}$</span>
+    </div>
+
+    <!-- Live KaTeX readout (filled in Step 3) -->
+    <div class="pl-info">
+      <div class="lec-readout-eq" id="readout-fisher">$$\mathcal{I} = \tfrac{1}{\sigma^2}\mathbf{X}^{\!\top}\mathbf{X}$$</div>
+      <div class="lec-readout-eq" id="readout-cov">$$\mathrm{cov}\{\hat{\mathbf{w}}\} = \mathcal{I}^{-1}$$</div>
+      <div class="lec-readout-note" id="readout-note">Numeric matrices update with the controls (Step 3).</div>
+    </div>
+
+    <p class="pl-attribution">INFO 521 · University of Arizona · built with assistance from Claude</p>
+  </div>
+
+  <!-- Shared viz helpers (Okabe-Ito + theme-aware chrome). NO quiz-engine. -->
+  <script src="../../shared/viz-helpers.js"></script>
+  <script src="./m3-covariance-ellipse.js"></script>
+</body>
+</html>

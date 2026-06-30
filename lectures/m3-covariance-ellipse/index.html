@@ -130,6 +130,9 @@
 
   <!-- Shared viz helpers (Okabe-Ito + theme-aware chrome). NO quiz-engine. -->
   <script src="../../shared/viz-helpers.js"></script>
+  <!-- Data as a classic <script> global (file://-safe; fetch() of local JSON is
+       CORS-blocked on file://). Canonical source is data/nhanes-age-sbp.json. -->
+  <script src="./data/nhanes-age-sbp.js"></script>
   <script src="./m3-covariance-ellipse.js"></script>
 </body>
 </html>

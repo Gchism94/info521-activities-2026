@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INFO 521 — Peer-Engagement Loops</title>
+  <link rel="stylesheet" href="./shared/shell.css">
+  <style>
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .tool-card {
+      background: var(--pl-card);
+      border: 1px solid var(--pl-border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+    }
+    .tool-card h2 {
+      font-size: 1rem;
+      margin: 0 0 0.25rem;
+      color: var(--pl-text);
+    }
+    .tool-card .week-label {
+      font-size: 0.8rem;
+      color: var(--pl-muted);
+      margin-bottom: 0.5rem;
+    }
+    .tool-card p {
+      font-size: 0.9rem;
+      color: var(--pl-muted);
+      margin: 0 0 0.75rem;
+    }
+    .tool-card a.btn {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      background: var(--pl-accent);
+      color: #fff;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .tool-card a.btn:hover { background: var(--pl-accent-2); }
+    .hub-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--pl-accent);
+    }
+    header { margin-bottom: 1.5rem; }
+    header p { color: var(--pl-muted); max-width: 56ch; }
+  </style>
+</head>
+<body>
+  <div class="pl-container">
+    <header>
+      <h1>INFO 521 — Peer-Engagement Loops</h1>
+      <p>Interactive tools + retakeable mastery quizzes. Complete a tool, reach ≥ 80% on the
+         quiz to reveal your completion token, then follow the loop in D2L: reflection →
+         peer review → respond &amp; revise.</p>
+      <a class="hub-link" href="https://gchism94.github.io/info521">← Course Hub</a>
+    </header>
+
+    <div class="tool-grid">
+      <div class="tool-card">
+        <div class="week-label">Week 1</div>
+        <h2>Least Squares</h2>
+        <p>Drag data points and fit a line by eye; watch the loss update live.</p>
+        <a class="btn" href="./week01-least-squares/">Open tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="week-label">Week 2</div>
+        <h2>Bias–Variance Trade-off</h2>
+        <p>Visualize how polynomial degree and noise level shape model error.</p>
+        <a class="btn" href="./week02-bias-variance/">Open tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="week-label">Week 3</div>
+        <h2>Bayesian Updating</h2>
+        <p>Add data one observation at a time and watch the posterior sharpen.</p>
+        <a class="btn" href="./week03-bayesian-updating/">Open tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="week-label">Week 4</div>
+        <h2>Logistic Regression</h2>
+        <p>Adjust the decision boundary and observe probabilistic classification.</p>
+        <a class="btn" href="./week04-logistic-regression/">Open tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="week-label">Week 5</div>
+        <h2>k-means Clustering</h2>
+        <p>Initialize centroids and step through the assignment–update loop.</p>
+        <a class="btn" href="./week05-kmeans/">Open tool</a>
+      </div>
+      <div class="tool-card">
+        <div class="week-label">Week 6</div>
+        <h2>PCA</h2>
+        <p>Rotate to principal components and see variance explained by each axis.</p>
+        <a class="btn" href="./week06-pca/">Open tool</a>
+      </div>
+    </div>
+
+    <p style="font-size:0.85rem; color:var(--pl-muted);">
+      Week 7 has no loop — focus shifts to the final project.
+      Full course schedule at the <a href="https://gchism94.github.io/info521">Course Hub</a>.
+    </p>
+  </div>
+</body>
+</html>

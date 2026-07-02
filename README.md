@@ -46,3 +46,9 @@ site is fully static and buildless — everything is already in the tree.
 **local-preview convenience only** and is not used by Pages. Do not point Pages at `dist/`.
 
 Publishing (repo creation, push, Pages config, GitHub Classroom) is done manually.
+
+## Publishing
+
+GitHub Pages serves `main/root`. **Pushing to main IS the deploy** — no build step, no
+workflow, no Actions required. Once Greg enables Pages (Settings → Pages → Source: main /
+root), every `git push origin main` automatically updates the live site.

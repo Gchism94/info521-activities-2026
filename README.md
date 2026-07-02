@@ -37,4 +37,12 @@ all work normally.
 - **Week 1** — built (least-squares explorer + quiz).
 - **Weeks 2–6** — copy Week 1, swap CONFIG + `drawViz`. See `CLAUDE.md`.
 
-Publishing (repo creation, push, Pages, GitHub Classroom) is done manually.
+## GitHub Pages setup
+
+Pages is configured to serve from **`main` branch / root** (no docs/ subdirectory). The
+site is fully static and buildless — everything is already in the tree.
+
+`deploy.sh` stages a flat `dist/` copy that mirrors the root layout; it is a
+**local-preview convenience only** and is not used by Pages. Do not point Pages at `dist/`.
+
+Publishing (repo creation, push, Pages config, GitHub Classroom) is done manually.

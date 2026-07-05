@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3 · Parameter Uncertainty — INFO 521</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+  <div class="pl-container">
+    <h1>Parameter uncertainty: the spread of $\hat{\mathbf{w}}$</h1>
+    <p class="pl-subtitle">
+      <strong>In-lecture demo (Module 3) — no peer loop this week.</strong>
+      A fixed generating process produces datasets; every draw gets its own least-squares
+      fit $\hat{\mathbf{w}}$. Left: one dataset and its fitted line. Right: the cloud of
+      $\hat{\mathbf{w}}$ across draws — with the theoretical covariance ellipse it should fill.
+    </p>
+
+    <div class="pl-eq">
+      <div>$$y_n = w_0 + w_1 z_n + \varepsilon_n,\quad \varepsilon_n \sim \mathcal{N}(0,\sigma^2)$$</div>
+      <div class="pl-eq-note">so that</div>
+      <div>$$\mathrm{Cov}[\hat{\mathbf{w}}] = \sigma^2 (X^\top X)^{-1}$$</div>
+    </div>
+
+    <div class="pl-panel">
+      <div id="charts" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">
+        <div>
+          <div class="pl-eq-note" style="text-align:center;">data space — one draw</div>
+          <div id="chart-data"></div>
+        </div>
+        <div>
+          <div class="pl-eq-note" style="text-align:center;">parameter space — all draws</div>
+          <div id="chart-param"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pl-legend" aria-hidden="true">
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#0072B2;"></span>Sampled patients</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#D55E00;"></span>This draw's fit</span>
+      <span class="pl-legend-item"><span class="pl-swatch dot" style="background:#E69F00;"></span>ŵ per draw</span>
+      <span class="pl-legend-item"><span class="pl-swatch" style="border-top-color:#009E73; border-top-style:dashed;"></span>2σ theory ellipse</span>
+      <span class="pl-legend-item"><span class="pl-swatch diamond" style="background:#CC79A7;"></span>True w</span>
+    </div>
+
+    <div class="pl-controls">
+      <div class="pl-controls-row">
+        <div class="pl-control">
+          <label for="rng-n">Sample size $N$</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-n" min="10" max="400" step="10" value="40" aria-label="Sample size N">
+            <input type="number" id="num-n" min="10" max="400" step="10" value="40" aria-label="Sample size N value">
+          </div>
+        </div>
+        <div class="pl-control">
+          <label for="rng-s">Noise $\sigma$ (mmHg)</label>
+          <div class="pl-control-inputs">
+            <input type="range" id="rng-s" min="5" max="30" step="1" value="16" aria-label="Noise sigma">
+            <input type="number" id="num-s" min="5" max="30" step="1" value="16" aria-label="Noise sigma value">
+          </div>
+        </div>
+      </div>
+      <div class="pl-btns">
+        <button class="pl-btn" id="btn-one" type="button">Draw one dataset</button>
+        <button class="pl-btn" id="btn-hundred" type="button">Draw 100</button>
+        <button class="pl-btn" id="btn-reset" type="button">Reset cloud</button>
+      </div>
+    </div>
+
+    <div class="pl-info">
+      <div class="pl-info-grid">
+        <div class="pl-cell"><div class="pl-cell-label">Draws so far</div><div class="pl-cell-value" id="val-draws">0</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">This draw's $\hat{w}_1$</div><div class="pl-cell-value" id="val-w1">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Empirical SD of $\hat{w}_1$</div><div class="pl-cell-value" id="val-emp">—</div></div>
+        <div class="pl-cell"><div class="pl-cell-label">Theory: $\sigma/\sqrt{S_{zz}}$</div><div class="pl-cell-value" id="val-theory">—</div></div>
+      </div>
+    </div>
+
+    <p class="pl-attribution">INFO 521 · University of Arizona · built with assistance from Claude</p>
+  </div>
+
+  <script src="./demo.js"></script>
+</body>
+</html>

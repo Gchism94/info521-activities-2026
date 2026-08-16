@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stage a flat, GitHub-Pages-ready copy under dist/. Publishing (push / Pages
-# branch / GitHub Classroom) is a manual step and is intentionally NOT done here.
+# branch / Classroom 50) is a manual step and is intentionally NOT done here.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST="$ROOT/dist"

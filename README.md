@@ -1,54 +1,54 @@
-# INFO 521 — Peer-Engagement Loops
+# INFO 521 Peer-Engagement Loops
 
-Interactive tools + retakeable mastery quizzes for INFO 521. One per week (Weeks 1–6),
-each the entry point to a four-stage loop that continues in D2L: **tool + quiz →
-reflection → peer review → respond + revise.** The quiz emits a completion token students
-paste into their D2L reflection as proof of mastery (≥ 80%).
+Interactive tools + retakeable mastery quizzes for INFO 521. Six tools (one per
+loop-carrying week), each the entry point to a four-stage loop that continues in
+D2L: **tool + quiz → reflection → peer review → respond + revise.** The quiz emits
+a completion token students paste into their D2L reflection as proof of mastery
+(≥ 80%). Week 3 has no tool (its discussion carries the loop alone); its
+parameter-uncertainty demo is embedded in lecture instead.
 
-These replace worksheets and the recurring-assessment role of the midterms; two separate
-projects (designed elsewhere) replace the midterm and final.
+Everything is **buildless static HTML**: no bundler, no framework, no build step.
 
-## Run it
-
-No build step. Either:
-
-- **Preview:** open `week01-least-squares/index.html` in a browser. (On `file://`, score
-  persistence may be limited in some browsers — that's fine for previewing.)
-- **Serve locally** for full behavior:
-  ```sh
-  python3 -m http.server   # then visit http://localhost:8000/week01-least-squares/
-  ```
-
-The real target is **GitHub Pages**, where the quiz, localStorage persistence, and token
-all work normally.
-
-## Layout
+## What is in this repo
 
 | Path | Role |
 |---|---|
-| `shared/shell.css` | Design system — light/dark, Okabe-Ito data colors |
-| `shared/quiz-engine.js` | Quiz + token engine (graded-critical) |
+| `week01-least-squares/` | least-squares explorer + quiz (fitting, residuals, normal equations) |
+| `week02-bias-variance/` | bias-variance explorer (polynomial order, ridge penalty) |
+| `week03-bayesian-updating/` | Bayesian updating explorer (runs in Week 4; slugs are week-named from an earlier numbering) |
+| `week04-logistic-regression/` | logistic explorer (runs in Week 5) |
+| `week05-kmeans/` | k-means explorer (runs in Week 6) |
+| `week06-pca/` | PCA explorer (runs in Week 7) |
+| `m3-parameter-uncertainty/` | in-lecture demo for Module 3 (not a loop) |
+| `shared/shell.css` | design system: light/dark, Okabe-Ito data colors |
+| `shared/quiz-engine.js` | quiz + completion-token engine (grading-critical; edit with care) |
 | `shared/viz-helpers.js` | D3 palette + theme helpers |
-| `week01-least-squares/` | Week 1 tool: least-squares explorer + 13-item bank |
-| `deploy.sh` | Stages a flat `dist/` for Pages (does not publish) |
+| `d2l/` | one embed page per tool for D2L content topics |
+| `lectures/` | lecture-support pages |
+| `index.html` | tool index (the site landing page) |
+| `deploy.sh` | stages a flat `dist/` for local preview only (Pages does not use it) |
+| `.github/workflows/publish.yml` | GitHub Pages deploy (Settings → Pages → Source: GitHub Actions) |
 
-## Status
+The **Runs in** mapping (tool slug vs. actual course week) is authoritative on the
+hub's Activities page; from Module 4 on, each tool runs one week after its slug
+number.
 
-- **Week 1** — built (least-squares explorer + quiz).
-- **Weeks 2–6** — copy Week 1, swap CONFIG + `drawViz`. See `CLAUDE.md`.
+## Run it
 
-## GitHub Pages setup
+- Preview: open any `weekNN-*/index.html` in a browser (on `file://`, score
+  persistence may be limited; fine for previewing).
+- Full behavior: `python3 -m http.server` then visit
+  `http://localhost:8000/week01-least-squares/`.
+- Production: GitHub Pages via the publish workflow. Push to `main` deploys.
 
-Pages is configured to serve from **`main` branch / root** (no docs/ subdirectory). The
-site is fully static and buildless — everything is already in the tree.
+## Accessibility and theming
 
-`deploy.sh` stages a flat `dist/` copy that mirrors the root layout; it is a
-**local-preview convenience only** and is not used by Pages. Do not point Pages at `dist/`.
+All tools: dark/light toggle matching the slide decks, keyboard-operable controls
+with visible focus, Okabe-Ito palette with redundant non-color cues, reduced-motion
+support, KaTeX 0.16.9 for math (identical to the slides).
 
-Publishing (repo creation, push, Pages config, GitHub Classroom) is done manually.
+## Editing rules
 
-## Publishing
-
-GitHub Pages serves `main/root`. **Pushing to main IS the deploy** — no build step, no
-workflow, no Actions required. Once Greg enables Pages (Settings → Pages → Source: main /
-root), every `git push origin main` automatically updates the live site.
+The completion token and quiz logic live in `shared/quiz-engine.js` and are
+honor-evidence for grading: each week's token differs, and an audit list flags
+anomalies. Do not change token generation mid-term.

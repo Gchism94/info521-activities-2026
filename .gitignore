@@ -5,3 +5,6 @@ dist/
 # Week 3 demo source (Greg's upload); imported verbatim into
 # week03-bayesian-updating/index.html, so the root copy is not tracked.
 bayesian_updating_demo.html
+
+# Retired material staged for manual deletion; never commit
+_to_delete/

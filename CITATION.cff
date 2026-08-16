@@ -1,0 +1,35 @@
+# This CITATION.cff file was generated to make this repository citable.
+# Check https://citation-file-format.github.io/ for guidance.
+#
+# Before your first Zenodo release: fill in `version`, `date-released`, and
+# `license` below (no LICENSE file exists in this repo yet; pick one, e.g.
+# MIT for the tool code, and add the corresponding LICENSE file).
+# ORCID is optional but recommended if you have one.
+
+cff-version: 1.2.0
+message: "If you use or adapt these activities, please cite them as below."
+title: "INFO 521: Machine Learning Foundations — Interactive Activities"
+abstract: >-
+  Six browser-based interactive tools supporting INFO 521, Machine Learning
+  Foundations, at the University of Arizona College of Information Science.
+  Used for in-class and asynchronous peer-engagement activities across the
+  course's modules on estimation, inference, and uncertainty. Static site,
+  no build step required. Companion repository to the INFO 521 course hub.
+type: software
+authors:
+  - family-names: "Chism"
+    given-names: "Greg"
+    affiliation: "University of Arizona, College of Information Science"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/gchism94/info521-activities-2026"
+url: "https://gchism94.github.io/info521-activities-2026"
+# version: "2026.1"
+# date-released: "YYYY-MM-DD"
+# license: "MIT"
+keywords:
+  - machine-learning
+  - statistics
+  - interactive-learning
+  - peer-instruction
+  - graduate-course
+  - open-educational-resources

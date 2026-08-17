@@ -1,6 +1,6 @@
 # INFO 521 Peer-Engagement Loops
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21971108.svg)](https://doi.org/10.5281/zenodo.21971108)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21971108.svg)](https://doi.org/10.5281/zenodo.21971108) [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
 If using these course materials, cite the following: 
 >Chism, G. (2026). INFO 521: Machine Learning Foundations — Interactive Activities (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21971108

@@ -20,12 +20,12 @@ authors:
   - family-names: "Chism"
     given-names: "Greg"
     affiliation: "University of Arizona, College of Information Science"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0000-0002-5478-2445"
 repository-code: "https://github.com/gchism94/info521-activities-2026"
 url: "https://gchism94.github.io/info521-activities-2026"
-# version: "2026.1"
-# date-released: "YYYY-MM-DD"
-# license: "MIT"
+version: "1.0.0"
+date-released: "2026-08-17"
+license: "CC-BY-4.0"
 keywords:
   - machine-learning
   - statistics

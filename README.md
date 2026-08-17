@@ -1,5 +1,10 @@
 # INFO 521 Peer-Engagement Loops
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21971108.svg)](https://doi.org/10.5281/zenodo.21971108)
+
+If using these course materials, cite the following: 
+>Chism, G. (2026). INFO 521: Machine Learning Foundations — Interactive Activities (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21971108
+
 Interactive tools + retakeable mastery quizzes for INFO 521. Six tools (one per
 loop-carrying week), each the entry point to a four-stage loop that continues in
 D2L: **tool + quiz → reflection → peer review → respond + revise.** The quiz emits
